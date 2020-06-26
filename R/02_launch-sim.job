@@ -1,0 +1,14 @@
+#!/bin/bash
+#SBATCH -n 1                    # Number of cores requested
+#SBATCH -t 12:00:00                    # Runtime in minutes
+# Or use HH:MM:SS or D-HH:MM:SS, instead of just number of minutes
+#SBATCH -p short                # Partition (queue) to submit to
+#SBATCH --open-mode=truncate      # append adds to outfile, truncate deletes first
+### In filenames, %j=jobid, %a=index in job array
+#SBATCH -o Rout/02_launch-sim.out               # Standard out goes to this file
+#SBATCH --mail-type=END         # Mail when the job ends
+
+module load gcc/6.2.0
+module load R/3.4.1
+module load pandoc/2.1.1
+R CMD BATCH --no-save 01_sim.R Rout/01_sim.Rout
