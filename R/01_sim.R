@@ -8,7 +8,7 @@ library(crossurr)
 library(HIMA)
 library(clustermq)
 
-simfn <- function(n, p, R = 0.5, rho = 0.4) {
+simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0) {
   Delta <- 2.25
   Delta_s <- Delta*(1-R)
   
