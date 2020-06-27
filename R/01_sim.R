@@ -9,6 +9,16 @@ library(HIMA)
 library(clustermq)
 
 simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0) {
+  library(tidyverse)
+  library(here)
+  library(glue)
+  library(bama)
+  library(mvnfast)
+  library(SuperLearner)
+  library(crossurr)
+  library(HIMA)
+  library(clustermq)
+  
   Delta <- 2.25
   Delta_s <- Delta*(1-R)
   
