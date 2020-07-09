@@ -80,7 +80,7 @@ simfn <- function(n, p, q, R = 0.8, linear = TRUE, run = 0) {
                                         "SL.glm", "SL.lda", "SL.qda",
                                         "SL.svm", 'SL.ranger'),
                         trim_at = 0.01,
-                        method = 'superlearner')
+                        mthd = 'superlearner')
   
   xf_delta <- xfit_dr(ds = wds,
                       xvars = c(paste('x.', 1:q, sep ='')),
