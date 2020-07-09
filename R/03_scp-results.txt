@@ -1,0 +1,1 @@
+scp   dma12@transfer.rc.hms.harvard.edu:~/doubly-robust-surrogate/results/01_sim-results.rds ~/OneDrive\ -\ RAND\ Corporation/rprojects/parast_longitudinal-surrogate-markers/doubly-robust-surrogate/results
