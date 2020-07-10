@@ -140,8 +140,8 @@ simfn <- function(n, p, q, R = 0.8, linear = TRUE, run = 0) {
 }
 
 sim_params <- expand.grid(n = c(50, 500, 1000),
-                          p = c(5, 100, 5000),
-                          q = c(5, 100, 5000),
+                          p = c(5, 100, 250),
+                          q = c(5, 100, 250),
                           linear = c(TRUE, FALSE),
                           R = 0.5,
                           run = 1:3)
