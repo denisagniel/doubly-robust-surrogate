@@ -157,5 +157,5 @@ options(
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 750)
+                  n_jobs = 10)
 saveRDS(sim_res, here('results/05_lnl-sim-results.rds'))
