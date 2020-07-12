@@ -144,7 +144,7 @@ sim_params <- expand.grid(n = c(50, 500),
                           q = c(5, 100),
                           linear = c(TRUE, FALSE),
                           R = 0.5,
-                          run = 1:3)
+                          run = 1:1000)
 # tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(2)
 # tst
 # Q_rows(tst, simfn)
@@ -157,5 +157,5 @@ options(
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 10)
+                  n_jobs = 1000)
 saveRDS(sim_res, here('results/05_lnl-sim-results.rds'))
