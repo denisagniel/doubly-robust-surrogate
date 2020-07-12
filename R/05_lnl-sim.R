@@ -93,7 +93,7 @@ simfn <- function(n, p, q, R = 0.8, linear = TRUE, run = 0) {
                                       "SL.glm", "SL.lda", "SL.qda",
                                       "SL.svm", 'SL.ranger'),
                       trim_at = 0.01,
-                      method = 'superlearner')
+                      mthd = 'superlearner')
   
   dr_delta_s <- xf_delta_s$estimate
   dr_delta <- xf_delta$estimate
