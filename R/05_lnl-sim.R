@@ -139,12 +139,12 @@ simfn <- function(n, p, q, R = 0.8, linear = TRUE, run = 0) {
   out_ds
 }
 
-sim_params <- expand.grid(n = c(50, 500, 1000),
+sim_params <- expand.grid(n = c(50, 500),
                           p = c(5, 100, 250),
-                          q = c(5, 100, 250),
+                          q = c(5, 100),
                           linear = c(TRUE, FALSE),
                           R = 0.5,
-                          run = 1:1000)
+                          run = 1:3)
 # tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(2)
 # tst
 # Q_rows(tst, simfn)
