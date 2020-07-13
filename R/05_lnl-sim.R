@@ -8,7 +8,7 @@ library(crossurr)
 library(HIMA)
 library(clustermq)
 
-simfn <- function(n, p, q, s= 1, R = 0.8, linear = TRUE, run = 0) {
+simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   library(tidyverse)
   library(here)
   library(glue)
@@ -18,7 +18,8 @@ simfn <- function(n, p, q, s= 1, R = 0.8, linear = TRUE, run = 0) {
   library(crossurr)
   library(HIMA)
   library(clustermq)
-  
+
+  # browser()
   set.seed(0)
   ax_beta <- rnorm(q)
   beta_s <- matrix(seq(-1, 1, length = q), q, p, byrow = TRUE)
@@ -30,19 +31,19 @@ simfn <- function(n, p, q, s= 1, R = 0.8, linear = TRUE, run = 0) {
   Delta <- Delta_s + delta
   
   set.seed(run)
-  x <- rnorm(n*q, sd = s) %>% matrix(n, q)
+  x <- rnorm(n*q, sd = sig) %>% matrix(n, q)
   a <- rbinom(n, prob = plogis(x %*% ax_beta), size = 1)
   
-  s_1 <- alpha_s1 + x %*% beta_s + rnorm(n*p, sd = s) %>% matrix(n, p)
-  s_0 <- alpha_s0 + x %*% beta_s0 + rnorm(n*p, sd = s) %>% matrix(n, p)
+  s_1 <- alpha_s1 + x %*% beta_s + rnorm(n*p, sd = sig) %>% matrix(n, p)
+  s_0 <- alpha_s0 + x %*% beta_s0 + rnorm(n*p, sd = sig) %>% matrix(n, p)
   s <- s_1*a + (1-a)*s_0
   
   if (linear) {
-    y_1 <- Delta_s + rowMeans(x) + s_1[,1] + s_1[,2] + rnorm(n, sd = s)
-    y_0 <- rowMeans(x) + s_0[,1] + s_0[,2] + rnorm(n, sd = s)
+    y_1 <- Delta_s + rowMeans(x) + s_1[,1] + s_1[,2] + rnorm(n, sd = sig)
+    y_0 <- rowMeans(x) + s_0[,1] + s_0[,2] + rnorm(n, sd = sig)
   } else {
-    y_1 <- Delta_s + rowMeans(exp(x)) + s_1[,1] + s_1[,2] + rnorm(n, sd = s)
-    y_0 <- rowMeans(exp(x)) + s_0[,1] + s_0[,2] + rnorm(n, sd = s)
+    y_1 <- Delta_s + rowMeans(exp(x)) + s_1[,1] + s_1[,2] + rnorm(n, sd = sig)
+    y_0 <- rowMeans(exp(x)) + s_0[,1] + s_0[,2] + rnorm(n, sd = sig)
   }
   y <- y_1*a + (1-a)*y_0
   
@@ -68,6 +69,8 @@ simfn <- function(n, p, q, s= 1, R = 0.8, linear = TRUE, run = 0) {
   wds <- ds %>%
     spread(sn, s) %>%
     inner_join(xds)
+  
+  
   xf_delta_s <- xfit_dr(ds = wds,
                         xvars = c(paste('s.', 1:p, sep =''),
                                   paste('x.', 1:q, sep ='')),
@@ -142,12 +145,17 @@ sim_params <- expand.grid(n = 500,
                           p = c(5, 100, 250),
                           q = c(5, 100, 250),
                           linear = c(TRUE, FALSE),
-                          s = 0.5,
+                          sig = 0.5,
                           R = 0.5,
                           run = 1:1000) 
-# tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(2)
-# tst
-# Q_rows(tst, simfn)
+tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
+tst
+with(tst, simfn(n = n,
+                p = p,
+                q = q,
+                sig = 0.5,
+                R = 0.5, 
+                run = 0))
 
 options(
   clustermq.defaults = list(ptn="short",
