@@ -8,7 +8,7 @@ library(crossurr)
 library(HIMA)
 library(clustermq)
 
-simfn <- function(n, p, q, R = 0.8, linear = TRUE, run = 0) {
+simfn <- function(n, p, q, s= 1, R = 0.8, linear = TRUE, run = 0) {
   library(tidyverse)
   library(here)
   library(glue)
@@ -30,19 +30,19 @@ simfn <- function(n, p, q, R = 0.8, linear = TRUE, run = 0) {
   Delta <- Delta_s + delta
   
   set.seed(run)
-  x <- rnorm(n*q) %>% matrix(n, q)
+  x <- rnorm(n*q, sd = s) %>% matrix(n, q)
   a <- rbinom(n, prob = plogis(x %*% ax_beta), size = 1)
   
-  s_1 <- alpha_s1 + x %*% beta_s + rnorm(n*p) %>% matrix(n, p)
-  s_0 <- alpha_s0 + x %*% beta_s0 + rnorm(n*p) %>% matrix(n, p)
+  s_1 <- alpha_s1 + x %*% beta_s + rnorm(n*p, sd = s) %>% matrix(n, p)
+  s_0 <- alpha_s0 + x %*% beta_s0 + rnorm(n*p, sd = s) %>% matrix(n, p)
   s <- s_1*a + (1-a)*s_0
   
   if (linear) {
-    y_1 <- Delta_s + rowMeans(x) + s_1[,1] + s_1[,2] + rnorm(n)
-    y_0 <- rowMeans(x) + s_0[,1] + s_0[,2] + rnorm(n)
+    y_1 <- Delta_s + rowMeans(x) + s_1[,1] + s_1[,2] + rnorm(n, sd = s)
+    y_0 <- rowMeans(x) + s_0[,1] + s_0[,2] + rnorm(n, sd = s)
   } else {
-    y_1 <- Delta_s + rowMeans(exp(x)) + s_1[,1] + s_1[,2] + rnorm(n)
-    y_0 <- rowMeans(exp(x)) + s_0[,1] + s_0[,2] + rnorm(n)
+    y_1 <- Delta_s + rowMeans(exp(x)) + s_1[,1] + s_1[,2] + rnorm(n, sd = s)
+    y_0 <- rowMeans(exp(x)) + s_0[,1] + s_0[,2] + rnorm(n, sd = s)
   }
   y <- y_1*a + (1-a)*y_0
   
@@ -138,13 +138,13 @@ simfn <- function(n, p, q, R = 0.8, linear = TRUE, run = 0) {
   )
   out_ds
 }
-
-sim_params <- expand.grid(n = c(50, 500),
+sim_params <- expand.grid(n = 500,
                           p = c(5, 100, 250),
-                          q = c(5, 100),
+                          q = c(5, 100, 250),
                           linear = c(TRUE, FALSE),
-                          R = 0.5,
-                          run = 1:1000)
+                          s = 0.5,
+                          R_0 = 0.5,
+                          run = 1:1000) 
 # tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(2)
 # tst
 # Q_rows(tst, simfn)
