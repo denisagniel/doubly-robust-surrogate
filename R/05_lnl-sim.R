@@ -143,7 +143,7 @@ sim_params <- expand.grid(n = 500,
                           q = c(5, 100, 250),
                           linear = c(TRUE, FALSE),
                           s = 0.5,
-                          R_0 = 0.5,
+                          R = 0.5,
                           run = 1:1000) 
 # tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(2)
 # tst
