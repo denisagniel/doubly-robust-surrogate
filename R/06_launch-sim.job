@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -n 1                    # Number of cores requested
-#SBATCH -t 72:00:00                    # Runtime in minutes
+#SBATCH -t 120:00:00                    # Runtime in minutes
 # Or use HH:MM:SS or D-HH:MM:SS, instead of just number of minutes
 #SBATCH -p medium                # Partition (queue) to submit to
 #SBATCH --open-mode=truncate      # append adds to outfile, truncate deletes first

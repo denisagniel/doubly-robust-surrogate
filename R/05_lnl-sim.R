@@ -142,20 +142,20 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   out_ds
 }
 sim_params <- expand.grid(n = 500,
-                          p = c(5, 100, 250),
-                          q = c(5, 100, 250),
+                          p = c(5, 50, 100),
+                          q = c(5, 50, 100),
                           linear = c(TRUE, FALSE),
                           sig = 0.5,
                           R = 0.5,
                           run = 1:1000) 
-tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
-tst
-with(tst, simfn(n = n,
-                p = p,
-                q = q,
-                sig = 0.5,
-                R = 0.5, 
-                run = 0))
+# tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
+# tst
+# with(tst, simfn(n = n,
+#                 p = p,
+#                 q = q,
+#                 sig = 0.5,
+#                 R = 0.5, 
+#                 run = 0))
 
 options(
   clustermq.defaults = list(ptn="short",
