@@ -20,7 +20,7 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   library(clustermq)
 
   # browser()
-  set.seed(0)
+  set.seed(run)
   ax_beta <- rnorm(q)
   beta_s <- matrix(seq(-1, 1, length = q), q, p, byrow = TRUE)
   beta_s0 <- matrix(seq(-2, 0, length = q), q, p, byrow = TRUE)
@@ -120,17 +120,25 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   bama_r <- bama_nie/bama_te
   
   
-  hima_tst <- hima(X = a,
+  hima_tst <- try(hima(X = a,
                    Y = y,
                    M = s,
                    COV.XM = x,
                    COV.MY = x,
-                   verbose = TRUE)
-  hima_nie <- sum(hima_tst$`alpha*beta`)
-  hima_r <- sum(hima_tst$`% total effect`/100)
-  hima_nde <- (1-hima_r)*hima_nie/hima_r
-  hima_delta_s <- hima_nde
-  hima_delta <- hima_nde + hima_nie
+                  verbose = TRUE), silent = TRUE)
+  if (inherits(hima_tst, 'try-error')) {
+    hima_nie <- NA
+    hima_r <- NA
+    hima_nde <- NA
+    hima_delta_s <- NA
+    hima_delta <- NA
+  } else {
+    hima_nie <- sum(hima_tst$`alpha*beta`)
+    hima_r <- sum(hima_tst$`% total effect`/100)
+    hima_nde <- (1-hima_r)*hima_nie/hima_r
+    hima_delta_s <- hima_nde
+    hima_delta <- hima_nde + hima_nie
+  }
   
   
   out_ds <- tibble(
@@ -147,7 +155,7 @@ sim_params <- expand.grid(n = c(100, 500),
                           linear = c(TRUE, FALSE),
                           sig = 0.5,
                           R = 0.5,
-                          run = 1:3) 
+                          run = 1:1000) 
 # tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
 # tst
 # with(tst, simfn(n = n,
@@ -165,5 +173,5 @@ options(
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 12)
+                  n_jobs = 200)
 saveRDS(sim_res, here('results/05_lnl-sim-results.rds'))
