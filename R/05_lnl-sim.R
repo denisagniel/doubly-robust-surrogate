@@ -26,7 +26,12 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   beta_s0 <- matrix(seq(-2, 0, length = q), q, p, byrow = TRUE)
   alpha_s1 <- matrix(c(0.75, 0.25, runif(p-2)), n, p, byrow = TRUE)
   alpha_s0 <- matrix(c(0, 0, runif(p- 2) - 0.5), n, p, byrow = TRUE)
-  delta <- alpha_s1[1,1] + alpha_s1[1,2] - alpha_s0[1,1] - alpha_s0[1,2]
+  if (!linear) {
+    delta <- exp(alpha_s1[1,1]) + alpha_s1[1,2] - exp(alpha_s0[1,1]) - alpha_s0[1,2]
+  } else {
+    delta <- alpha_s1[1,1] + alpha_s1[1,2] - alpha_s0[1,1] - alpha_s0[1,2]
+  }
+  
   Delta_s <- delta*(1-R)/R
   Delta <- Delta_s + delta
   
@@ -42,8 +47,8 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
     y_1 <- Delta_s + rowMeans(x) + s_1[,1] + s_1[,2] + rnorm(n, sd = sig)
     y_0 <- rowMeans(x) + s_0[,1] + s_0[,2] + rnorm(n, sd = sig)
   } else {
-    y_1 <- Delta_s + rowMeans(exp(x)) + s_1[,1] + s_1[,2] + rnorm(n, sd = sig)
-    y_0 <- rowMeans(exp(x)) + s_0[,1] + s_0[,2] + rnorm(n, sd = sig)
+    y_1 <- Delta_s + rowMeans(x) + exp(s_1[,1]) + s_1[,2] + rnorm(n, sd = sig)
+    y_0 <- rowMeans(x) + exp(s_0[,1]) + s_0[,2] + rnorm(n, sd = sig)
   }
   y <- y_1*a + (1-a)*y_0
   
@@ -85,6 +90,15 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
                         trim_at = 0.01,
                         mthd = 'superlearner')
   
+  xfl_delta_s <- xfit_dr(ds = wds,
+                        xvars = c(paste('s.', 1:p, sep =''),
+                                  paste('x.', 1:q, sep ='')),
+                        yname = y,
+                        aname = a,
+                        K = 4,
+                        trim_at = 0.01,
+                        mthd = 'lasso')
+  
   xf_delta <- xfit_dr(ds = wds,
                       xvars = c(paste('x.', 1:q, sep ='')),
                       yname = y,
@@ -97,10 +111,26 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
                                       "SL.svm", 'SL.ranger'),
                       trim_at = 0.01,
                       mthd = 'superlearner')
+  xfl_delta <- xfit_dr(ds = wds,
+                      xvars = c(paste('x.', 1:q, sep ='')),
+                      yname = y,
+                      aname = a,
+                      K = 4,
+                      outcome_learners = c("SL.mean", "SL.glmnet", 
+                                           "SL.ridge", "SL.lm", "SL.svm", 'SL.ranger'),
+                      ps_learners = c("SL.mean", "SL.glmnet", 
+                                      "SL.glm", "SL.lda", "SL.qda",
+                                      "SL.svm", 'SL.ranger'),
+                      trim_at = 0.01,
+                      mthd = 'lasso')
   
   dr_delta_s <- xf_delta_s$estimate
   dr_delta <- xf_delta$estimate
   dr_r <- 1 - dr_delta_s/dr_delta
+  
+  drl_delta_s <- xfl_delta_s$estimate
+  drl_delta <- xfl_delta$estimate
+  drl_r <- 1 - drl_delta_s/drl_delta
   
   bama_tst <- bama(Y = as.vector(y),
                    A = a,
@@ -117,8 +147,8 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   
   bama_delta_s <- bama_nde
   bama_delta <- bama_te
-  bama_r <- bama_nie/bama_te
-  
+  bama_r <- 1 - bama_nde/bama_te
+  # browser()
   
   hima_tst <- try(hima(X = a,
                    Y = y,
@@ -140,30 +170,35 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
     hima_delta <- hima_nde + hima_nie
   }
   
+  Delta_0 <- mean(y_1) - mean(y_0)
+  R_0 <- 1 - Delta_s/Delta_0
   
   out_ds <- tibble(
-    type = c('true', 'xfdr', 'bama', 'him'),
-    Delta = c(Delta, dr_delta, bama_delta, hima_delta),
-    Delta_s = c(Delta_s, dr_delta_s, bama_delta_s, hima_delta_s),
-    R = c(R, dr_r, bama_r, hima_r)
+    type = c('true', 'xfdr', 'xfl', 'bama', 'him'),
+    # Delta = c(Delta, dr_delta, drl_delta, bama_delta, hima_delta),
+    Delta = c(Delta_0, dr_delta, drl_delta, bama_delta, hima_delta),
+    Delta_s = c(Delta_s, dr_delta_s, drl_delta_s, bama_delta_s, hima_delta_s),
+    # R = c(R, dr_r, drl_r, bama_r, hima_r)
+    R = c(R_0, dr_r, drl_r, bama_r, hima_r)
   )
   out_ds
 }
-sim_params <- expand.grid(n = c(100, 500),
+sim_params <- expand.grid(n = c(110, 500),
                           p = c(5, 100),
                           q = c(5, 100),
                           linear = c(TRUE, FALSE),
-                          sig = 0.5,
+                          sig = 0.1,
                           R = 0.5,
-                          run = 1:1000) 
-# tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
-# tst
-# with(tst, simfn(n = n,
-#                 p = p,
-#                 q = q,
-#                 sig = 0.5,
-#                 R = 0.5, 
-#                 run = 0))
+                          run = 1:1000) %>%
+  mutate(sig = ifelse(n == 500, 0.5, 0.1))
+tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
+tst
+with(tst, simfn(n = n,
+                p = p,
+                q = q,
+                sig = 0.1,
+                R = 0.5,
+                run = run))
 
 options(
   clustermq.defaults = list(ptn="short",
