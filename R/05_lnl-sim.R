@@ -128,9 +128,43 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   dr_delta <- xf_delta$estimate
   dr_r <- 1 - dr_delta_s/dr_delta
   
+  dr_ds_cil <- dr_delta_s - 1.96*xf_delta_s$se
+  dr_ds_cih <- dr_delta_s + 1.96*xf_delta_s$se
+  dr_d_cil <- dr_delta - 1.96*xf_delta$se
+  dr_d_cih <- dr_delta + 1.96*xf_delta$se
+  
+  phi_ds <- xf_delta_s$observation_data[[1]] %>% select(u_i)
+  phi_d <- xf_delta$observation_data[[1]] %>% select(u_i)
+  phi <- cbind(phi_ds, phi_d) %>% as.matrix
+  gdot <- c(dr_delta^(-1), dr_delta_s/dr_delta^2)
+  Sigma <- t(phi) %*% phi / n
+  sigma <- t(gdot) %*% Sigma %*% gdot
+  r_se <- sqrt(sigma)/sqrt(n)
+  
+  dr_r_cil <- dr_r - 1.96*r_se
+  dr_r_cih <- dr_r + 1.96*r_se
+  
   drl_delta_s <- xfl_delta_s$estimate
   drl_delta <- xfl_delta$estimate
   drl_r <- 1 - drl_delta_s/drl_delta
+  
+  drl_ds_cil <- drl_delta_s - 1.96*xfl_delta_s$se
+  drl_ds_cih <- drl_delta_s + 1.96*xfl_delta_s$se
+  drl_d_cil <- drl_delta - 1.96*xfl_delta$se
+  drl_d_cih <- drl_delta + 1.96*xfl_delta$se
+  
+  # browser()
+  
+  phi_dsl <- xfl_delta_s$observation_data[[1]] %>% select(u_i)
+  phi_dl <- xfl_delta$observation_data[[1]] %>% select(u_i)
+  phil <- cbind(phi_dsl, phi_dl) %>% as.matrix
+  gdotl <- c(drl_delta^(-1), drl_delta_s/drl_delta^2)
+  Sigmal <- t(phil) %*% phil / n
+  sigmal <- t(gdotl) %*% Sigmal %*% gdotl
+  rl_se <- sqrt(sigmal)/sqrt(n)
+  
+  drl_r_cil <- drl_r - 1.96*rl_se
+  drl_r_cih <- drl_r + 1.96*rl_se
   
   bama_tst <- bama(Y = as.vector(y),
                    A = a,
@@ -147,7 +181,14 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   
   bama_delta_s <- bama_nde
   bama_delta <- bama_te
-  bama_r <- 1 - bama_nde/bama_te
+  bama_r <- 1 - mean(bama_tst$beta.a/(bama_tst$beta.a + rowSums(bama_tst$alpha.a* bama_tst$beta.m)))
+  
+  bama_ds_cil <- quantile(bama_tst$beta.a, 0.025)
+  bama_ds_cih <- quantile(bama_tst$beta.a, 0.975)
+  bama_d_cil <- quantile(bama_tst$beta.a + rowSums(bama_tst$alpha.a* bama_tst$beta.m), 0.025)
+  bama_d_cih <- quantile(bama_tst$beta.a + rowSums(bama_tst$alpha.a* bama_tst$beta.m), 0.975)
+  bama_r_cil <- quantile(bama_tst$beta.a/(bama_tst$beta.a + rowSums(bama_tst$alpha.a* bama_tst$beta.m)), 0.025)
+  bama_r_cih <- quantile(bama_tst$beta.a/(bama_tst$beta.a + rowSums(bama_tst$alpha.a* bama_tst$beta.m)), 0.975)
   # browser()
   
   hima_tst <- try(hima(X = a,
@@ -173,14 +214,22 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   Delta_0 <- mean(y_1) - mean(y_0)
   R_0 <- 1 - Delta_s/Delta_0
   
-  out_ds <- tibble(
+  # browser()
+  
+  out_ds <- data.frame(
     type = c('true', 'xfdr', 'xfl', 'bama', 'him'),
     # Delta = c(Delta, dr_delta, drl_delta, bama_delta, hima_delta),
     Delta = c(Delta_0, dr_delta, drl_delta, bama_delta, hima_delta),
+    Delta_cil = c(Delta_0, dr_d_cil, drl_d_cil, bama_d_cil, NA),
+    Delta_cih = c(Delta_0, dr_d_cih, drl_d_cih, bama_d_cih, NA),
     Delta_s = c(Delta_s, dr_delta_s, drl_delta_s, bama_delta_s, hima_delta_s),
+    Delta_s_cil = c(Delta_s, dr_ds_cil, drl_ds_cil, bama_ds_cil, NA),
+    Delta_s_cih = c(Delta_s, dr_ds_cih, drl_ds_cih, bama_ds_cih, NA),
     # R = c(R, dr_r, drl_r, bama_r, hima_r)
-    R = c(R_0, dr_r, drl_r, bama_r, hima_r)
-  )
+    R = c(R_0, dr_r, drl_r, bama_r, hima_r),
+    R_cil = c(R, dr_r_cil, drl_r_cil, bama_r_cil, NA),
+    R_cih = c(R, dr_r_cih, drl_r_cih, bama_r_cih, NA)
+  ) %>% as_tibble
   out_ds
 }
 sim_params <- expand.grid(n = c(110, 500),
@@ -191,14 +240,14 @@ sim_params <- expand.grid(n = c(110, 500),
                           R = 0.5,
                           run = 1:1000) %>%
   mutate(sig = ifelse(n == 500, 0.5, 0.1))
-tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
-tst
-with(tst, simfn(n = n,
-                p = p,
-                q = q,
-                sig = 0.1,
-                R = 0.5,
-                run = run))
+# tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
+# tst
+# with(tst, simfn(n = n,
+#                 p = p,
+#                 q = q,
+#                 sig = sig,
+#                 R = 0.5,
+#                 run = run))
 
 options(
   clustermq.defaults = list(ptn="short",
