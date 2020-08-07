@@ -20,7 +20,7 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   library(clustermq)
 
   # browser()
-  set.seed(run)
+  set.seed(0)
   ax_beta <- rnorm(q)
   beta_s <- matrix(seq(-1, 1, length = q), q, p, byrow = TRUE)
   beta_s0 <- matrix(seq(-2, 0, length = q), q, p, byrow = TRUE)
@@ -36,11 +36,11 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   Delta <- Delta_s + delta
   
   set.seed(run)
-  x <- rnorm(n*q, sd = sig) %>% matrix(n, q)
+  x <- rnorm(n*q, sd = 1) %>% matrix(n, q)
   a <- rbinom(n, prob = plogis(x %*% ax_beta), size = 1)
   
-  s_1 <- alpha_s1 + x %*% beta_s + rnorm(n*p, sd = sig) %>% matrix(n, p)
-  s_0 <- alpha_s0 + x %*% beta_s0 + rnorm(n*p, sd = sig) %>% matrix(n, p)
+  s_1 <- alpha_s1 + x %*% beta_s + rnorm(n*p, sd = sig/sqrt(p)) %>% matrix(n, p)
+  s_0 <- alpha_s0 + x %*% beta_s0 + rnorm(n*p, sd = sig/sqrt(p)) %>% matrix(n, p)
   s <- s_1*a + (1-a)*s_0
   
   if (linear) {
@@ -236,10 +236,10 @@ sim_params <- expand.grid(n = c(110, 500),
                           p = c(5, 100),
                           q = c(5, 100),
                           linear = c(TRUE, FALSE),
-                          sig = 0.1,
+                          sig = 0.5,
                           R = 0.5,
                           run = 1:1000) %>%
-  mutate(sig = ifelse(n == 500, 0.5, 0.1))
+  mutate(sig = ifelse(n == 110, 0.25, sig))
 # tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
 # tst
 # with(tst, simfn(n = n,
