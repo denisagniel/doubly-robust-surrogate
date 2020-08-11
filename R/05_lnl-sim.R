@@ -18,7 +18,7 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   library(crossurr)
   library(HIMA)
   library(clustermq)
-
+  
   # browser()
   set.seed(0)
   ax_beta <- rnorm(q)
@@ -230,6 +230,7 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
     R_cil = c(R, dr_r_cil, drl_r_cil, bama_r_cil, NA),
     R_cih = c(R, dr_r_cih, drl_r_cih, bama_r_cih, NA)
   ) %>% as_tibble
+  write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res_n{n}-p{p}-q{q}-l{linear}-{run}.csv'))
   out_ds
 }
 sim_params <- expand.grid(n = c(110, 500),
