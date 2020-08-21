@@ -8,7 +8,7 @@ library(crossurr)
 library(HIMA)
 library(clustermq)
 
-simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
+simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRUE) {
   library(tidyverse)
   library(here)
   library(glue)
@@ -22,8 +22,12 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   # browser()
   set.seed(0)
   ax_beta <- rnorm(q)
-  beta_s <- matrix(seq(-1, 1, length = q), q, p, byrow = TRUE)
-  beta_s0 <- matrix(seq(-2, 0, length = q), q, p, byrow = TRUE)
+  beta_s <- matrix(c(seq(-1, 1, length = 5),
+                     rep(0, q - 5)),
+                     q, p)
+  beta_s0 <- matrix(c(seq(-2, 0, length = 5), 
+                      rep(0, q - 5)),
+                    q, p)
   alpha_s1 <- matrix(c(0.75, 0.25, runif(p-2)), n, p, byrow = TRUE)
   alpha_s0 <- matrix(c(0, 0, runif(p- 2) - 0.5), n, p, byrow = TRUE)
   if (!linear) {
@@ -44,8 +48,8 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
   s <- s_1*a + (1-a)*s_0
   
   if (linear) {
-    y_1 <- Delta_s + rowMeans(x) + s_1[,1] + s_1[,2] + rnorm(n, sd = sig)
-    y_0 <- rowMeans(x) + s_0[,1] + s_0[,2] + rnorm(n, sd = sig)
+    y_1 <- Delta_s + rowMeans(x[,1:pmin(q, 25)]) + s_1[,1] + s_1[,2] + rnorm(n, sd = sig)
+    y_0 <- rowMeans(x[,1:pmin(q, 25)]) + s_0[,1] + s_0[,2] + rnorm(n, sd = sig)
   } else {
     y_1 <- Delta_s + rowMeans(x) + exp(s_1[,1]) + s_1[,2] + rnorm(n, sd = sig)
     y_0 <- rowMeans(x) + exp(s_0[,1]) + s_0[,2] + rnorm(n, sd = sig)
@@ -230,17 +234,18 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0) {
     R_cil = c(R, dr_r_cil, drl_r_cil, bama_r_cil, NA),
     R_cih = c(R, dr_r_cih, drl_r_cih, bama_r_cih, NA)
   ) %>% as_tibble
-  write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res_n{n}-p{p}-q{q}-l{linear}-{run}.csv'))
+  if (write) {
+    write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res_n{n}-p{p}-q{q}-l{linear}-{run}.csv'))
+  }
   out_ds
 }
 sim_params <- expand.grid(n = c(110, 500),
                           p = c(5, 100),
                           q = c(5, 100),
-                          linear = c(TRUE, FALSE),
-                          sig = 0.5,
+                          linear = TRUE,
+                          sig = c(0.1, 0.5),
                           R = 0.5,
-                          run = 1:1000) %>%
-  mutate(sig = ifelse(n == 110, 0.25, sig))
+                          run = 1:1000)
 # tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
 # tst
 # with(tst, simfn(n = n,
@@ -248,7 +253,8 @@ sim_params <- expand.grid(n = c(110, 500),
 #                 q = q,
 #                 sig = sig,
 #                 R = 0.5,
-#                 run = run))
+#                 run = run,
+#                 write = FALSE))
 
 options(
   clustermq.defaults = list(ptn="short",
