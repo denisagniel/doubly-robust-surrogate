@@ -43,8 +43,8 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRU
   x <- rnorm(n*q, sd = 1) %>% matrix(n, q)
   a <- rbinom(n, prob = plogis(x %*% ax_beta), size = 1)
   
-  s_1 <- alpha_s1 + x %*% beta_s + rnorm(n*p, sd = sig/sqrt(p)) %>% matrix(n, p)
-  s_0 <- alpha_s0 + x %*% beta_s0 + rnorm(n*p, sd = sig/sqrt(p)) %>% matrix(n, p)
+  s_1 <- alpha_s1 + x %*% beta_s + rnorm(n*p, sd = sig) %>% matrix(n, p)
+  s_0 <- alpha_s0 + x %*% beta_s0 + rnorm(n*p, sd = sig) %>% matrix(n, p)
   s <- s_1*a + (1-a)*s_0
   
   if (linear) {
