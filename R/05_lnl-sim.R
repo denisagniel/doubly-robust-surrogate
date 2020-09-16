@@ -7,6 +7,7 @@ library(SuperLearner)
 library(crossurr)
 library(HIMA)
 library(clustermq)
+library(freebird)
 
 simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRUE) {
   library(tidyverse)
@@ -18,6 +19,7 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRU
   library(crossurr)
   library(HIMA)
   library(clustermq)
+  library(freebird)
   
   # browser()
   set.seed(0)
@@ -215,24 +217,33 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRU
     hima_delta <- hima_nde + hima_nie
   }
   
+  fb_tst <- freebird::hilma(Y = y,
+                            G = s,
+                            S = a %>% matrix(n, 1))
+  fb_nie <- fb_tst$beta_hat
+  fb_nde <- fb_tst$alpha1_hat
+  fb_delta_s <- fb_nde
+  fb_delta <- fb_nde + fb_nie
+  fb_r <- fb_nie/fb_delta
+  
   Delta_0 <- mean(y_1) - mean(y_0)
   R_0 <- 1 - Delta_s/Delta_0
   
   # browser()
   
   out_ds <- data.frame(
-    type = c('true', 'xfdr', 'xfl', 'bama', 'him'),
-    # Delta = c(Delta, dr_delta, drl_delta, bama_delta, hima_delta),
-    Delta = c(Delta_0, dr_delta, drl_delta, bama_delta, hima_delta),
-    Delta_cil = c(Delta_0, dr_d_cil, drl_d_cil, bama_d_cil, NA),
-    Delta_cih = c(Delta_0, dr_d_cih, drl_d_cih, bama_d_cih, NA),
-    Delta_s = c(Delta_s, dr_delta_s, drl_delta_s, bama_delta_s, hima_delta_s),
-    Delta_s_cil = c(Delta_s, dr_ds_cil, drl_ds_cil, bama_ds_cil, NA),
-    Delta_s_cih = c(Delta_s, dr_ds_cih, drl_ds_cih, bama_ds_cih, NA),
+    type = c('true', 'xfdr', 'xfl', 'bama', 'hima', 'fb'),
+    # Delta = c(Delta, dr_delta, drl_delta, bama_delta, hima_delta, fb_delta),
+    Delta = c(Delta_0, dr_delta, drl_delta, bama_delta, hima_delta, fb_delta),
+    Delta_cil = c(Delta_0, dr_d_cil, drl_d_cil, bama_d_cil, NA, NA),
+    Delta_cih = c(Delta_0, dr_d_cih, drl_d_cih, bama_d_cih, NA, NA),
+    Delta_s = c(Delta_s, dr_delta_s, drl_delta_s, bama_delta_s, hima_delta_s, fb_delta_s),
+    Delta_s_cil = c(Delta_s, dr_ds_cil, drl_ds_cil, bama_ds_cil, NA, NA),
+    Delta_s_cih = c(Delta_s, dr_ds_cih, drl_ds_cih, bama_ds_cih, NA, NA),
     # R = c(R, dr_r, drl_r, bama_r, hima_r)
-    R = c(R_0, dr_r, drl_r, bama_r, hima_r),
-    R_cil = c(R, dr_r_cil, drl_r_cil, bama_r_cil, NA),
-    R_cih = c(R, dr_r_cih, drl_r_cih, bama_r_cih, NA)
+    R = c(R_0, dr_r, drl_r, bama_r, hima_r, fb_r),
+    R_cil = c(R, dr_r_cil, drl_r_cil, bama_r_cil, NA, NA),
+    R_cih = c(R, dr_r_cih, drl_r_cih, bama_r_cih, NA, NA)
   ) %>% as_tibble
   if (write) {
     write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res_n{n}-p{p}-q{q}-l{linear}-{run}.csv'))
@@ -240,21 +251,21 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRU
   out_ds
 }
 sim_params <- expand.grid(n = c(110, 500),
-                          p = c(5, 100),
-                          q = c(5, 100),
+                          p = 100,
+                          q = 100,
                           linear = TRUE,
                           sig = c(0.1, 0.5),
                           R = 0.5,
-                          run = 1:1000)
-# tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
-# tst
-# with(tst, simfn(n = n,
-#                 p = p,
-#                 q = q,
-#                 sig = sig,
-#                 R = 0.5,
-#                 run = run,
-#                 write = FALSE))
+                          run = 1:3)
+tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
+tst
+with(tst, simfn(n = n,
+                p = p,
+                q = q,
+                sig = sig,
+                R = 0.5,
+                run = run,
+                write = FALSE))
 
 options(
   clustermq.defaults = list(ptn="short",
