@@ -250,22 +250,22 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRU
   }
   out_ds
 }
-sim_params <- expand.grid(n = c(110, 500),
+sim_params <- expand.grid(n = c(100, 500),
                           p = 100,
                           q = 100,
                           linear = TRUE,
                           sig = c(0.1, 0.5),
                           R = 0.5,
-                          run = 1:3)
-tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
-tst
-with(tst, simfn(n = n,
-                p = p,
-                q = q,
-                sig = sig,
-                R = 0.5,
-                run = run,
-                write = FALSE))
+                          run = 1:1000)
+# tst <- sim_params %>% filter(p < 5000, q < 5000, n < 1000) %>% sample_n(1)
+# tst
+# with(tst, simfn(n = n,
+#                 p = p,
+#                 q = q,
+#                 sig = sig,
+#                 R = 0.5,
+#                 run = run,
+#                 write = FALSE))
 
 options(
   clustermq.defaults = list(ptn="short",
@@ -275,5 +275,5 @@ options(
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 20)
+                  n_jobs = 200)
 saveRDS(sim_res, here('results/05_lnl-sim-results.rds'))
