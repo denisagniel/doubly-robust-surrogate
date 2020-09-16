@@ -254,5 +254,5 @@ options(
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 200)
+                  n_jobs = 20)
 saveRDS(sim_res, here('results/01_sim-results.rds'))
