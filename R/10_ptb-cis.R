@@ -1,25 +1,20 @@
 library(tidyverse)
 library(here)
 library(glue)
-library(bama)
 library(mvnfast)
 library(SuperLearner)
 library(crossurr)
-library(HIMA)
 library(clustermq)
-library(freebird)
+
 
 simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
   library(tidyverse)
   library(here)
   library(glue)
-  library(bama)
   library(mvnfast)
   library(SuperLearner)
   library(crossurr)
-  library(HIMA)
   library(clustermq)
-  library(freebird)
   
   Delta <- 2.25
   Delta_s <- Delta*(1-R)
@@ -139,7 +134,7 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
     R_bci_h = R_bci_h
   ) %>% as_tibble
   if (write) {
-    write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res1_n{n}-p{p}-R{R}-{run}.csv'))
+    write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/ptb_n{n}-p{p}-R{R}-{run}.csv'))
   }
   out_ds
 }
@@ -156,7 +151,7 @@ sim_params <- expand.grid(n = 500,
 #                 run = runif(1),
 #                 write = FALSE))
 
-# simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = -12)
+simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = -12)
 
 
 options(
