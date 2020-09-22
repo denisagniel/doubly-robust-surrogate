@@ -151,7 +151,7 @@ sim_params <- expand.grid(n = 500,
 #                 run = runif(1),
 #                 write = FALSE))
 
-simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = -12)
+# simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = -12)
 
 
 options(
