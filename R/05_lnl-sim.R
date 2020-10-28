@@ -81,96 +81,38 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRU
     spread(sn, s) %>%
     inner_join(xds)
   
+  xf_surr <- xf_surrogate(ds = wds,
+                          x = paste('x.', 1:q, sep =''),
+                          s = paste('s.', 1:p, sep =''),
+                          a = 'a',
+                          y = 'y',
+                          K = 4,
+                          outcome_learners = c("SL.mean", "SL.glmnet", 
+                                               "SL.ridge", "SL.lm", "SL.svm", 'SL.ranger'),
+                          ps_learners = c("SL.mean", "SL.glmnet", 
+                                          "SL.glm", "SL.lda", "SL.qda",
+                                          "SL.svm", 'SL.ranger'),
+                          trim_at = 0.01,
+                          mthd = 'superlearner')
+  xfl_surr <- xf_surrogate(ds = wds,
+                          x = paste('x.', 1:q, sep =''),
+                          s = paste('s.', 1:p, sep =''),
+                          a = 'a',
+                          y = 'y',
+                          K = 4,
+                          trim_at = 0.01,
+                          mthd = 'lasso')
   
-  xf_delta_s <- xfit_dr(ds = wds,
-                        xvars = c(paste('s.', 1:p, sep =''),
-                                  paste('x.', 1:q, sep ='')),
-                        yname = y,
-                        aname = a,
-                        K = 4,
-                        outcome_learners = c("SL.mean", "SL.glmnet", 
-                                             "SL.ridge", "SL.lm", "SL.svm", 'SL.ranger'),
-                        ps_learners = c("SL.mean", "SL.glmnet", 
-                                        "SL.glm", "SL.lda", "SL.qda",
-                                        "SL.svm", 'SL.ranger'),
-                        trim_at = 0.01,
-                        mthd = 'superlearner')
-  
-  xfl_delta_s <- xfit_dr(ds = wds,
-                        xvars = c(paste('s.', 1:p, sep =''),
-                                  paste('x.', 1:q, sep ='')),
-                        yname = y,
-                        aname = a,
-                        K = 4,
-                        trim_at = 0.01,
-                        mthd = 'lasso')
-  
-  xf_delta <- xfit_dr(ds = wds,
-                      xvars = c(paste('x.', 1:q, sep ='')),
-                      yname = y,
-                      aname = a,
-                      K = 4,
-                      outcome_learners = c("SL.mean", "SL.glmnet", 
-                                           "SL.ridge", "SL.lm", "SL.svm", 'SL.ranger'),
-                      ps_learners = c("SL.mean", "SL.glmnet", 
-                                      "SL.glm", "SL.lda", "SL.qda",
-                                      "SL.svm", 'SL.ranger'),
-                      trim_at = 0.01,
-                      mthd = 'superlearner')
-  xfl_delta <- xfit_dr(ds = wds,
-                      xvars = c(paste('x.', 1:q, sep ='')),
-                      yname = y,
-                      aname = a,
-                      K = 4,
-                      outcome_learners = c("SL.mean", "SL.glmnet", 
-                                           "SL.ridge", "SL.lm", "SL.svm", 'SL.ranger'),
-                      ps_learners = c("SL.mean", "SL.glmnet", 
-                                      "SL.glm", "SL.lda", "SL.qda",
-                                      "SL.svm", 'SL.ranger'),
-                      trim_at = 0.01,
-                      mthd = 'lasso')
-  
-  dr_delta_s <- xf_delta_s$estimate
-  dr_delta <- xf_delta$estimate
+  dr_delta <- xf_surr$deltahat
+  drl_delta <- xfl_surr$deltahat
+  dr_delta_s <- xf_surr$deltahat_s
+  drl_delta_s <- xfl_surr$deltahat_s
   dr_r <- 1 - dr_delta_s/dr_delta
-  
-  dr_ds_cil <- dr_delta_s - 1.96*xf_delta_s$se
-  dr_ds_cih <- dr_delta_s + 1.96*xf_delta_s$se
-  dr_d_cil <- dr_delta - 1.96*xf_delta$se
-  dr_d_cih <- dr_delta + 1.96*xf_delta$se
-  
-  phi_ds <- xf_delta_s$observation_data[[1]] %>% select(u_i)
-  phi_d <- xf_delta$observation_data[[1]] %>% select(u_i)
-  phi <- cbind(phi_ds, phi_d) %>% as.matrix
-  gdot <- c(dr_delta^(-1), dr_delta_s/dr_delta^2)
-  Sigma <- t(phi) %*% phi / n
-  sigma <- t(gdot) %*% Sigma %*% gdot
-  r_se <- sqrt(sigma)/sqrt(n)
-  
-  dr_r_cil <- dr_r - 1.96*r_se
-  dr_r_cih <- dr_r + 1.96*r_se
-  
-  drl_delta_s <- xfl_delta_s$estimate
-  drl_delta <- xfl_delta$estimate
   drl_r <- 1 - drl_delta_s/drl_delta
-  
-  drl_ds_cil <- drl_delta_s - 1.96*xfl_delta_s$se
-  drl_ds_cih <- drl_delta_s + 1.96*xfl_delta_s$se
-  drl_d_cil <- drl_delta - 1.96*xfl_delta$se
-  drl_d_cih <- drl_delta + 1.96*xfl_delta$se
-  
-  # browser()
-  
-  phi_dsl <- xfl_delta_s$observation_data[[1]] %>% select(u_i)
-  phi_dl <- xfl_delta$observation_data[[1]] %>% select(u_i)
-  phil <- cbind(phi_dsl, phi_dl) %>% as.matrix
-  gdotl <- c(drl_delta^(-1), drl_delta_s/drl_delta^2)
-  Sigmal <- t(phil) %*% phil / n
-  sigmal <- t(gdotl) %*% Sigmal %*% gdotl
-  rl_se <- sqrt(sigmal)/sqrt(n)
-  
-  drl_r_cil <- drl_r - 1.96*rl_se
-  drl_r_cih <- drl_r + 1.96*rl_se
+  dr_r_cil <- dr_r - 1.96*xf_surr$R_se
+  dr_r_cih <- dr_r + 1.96*xf_surr$R_se
+  drl_r_cil <- drl_r - 1.96*xfl_surr$R_se
+  drl_r_cih <- drl_r + 1.96*xfl_surr$R_se
   
   bama_tst <- bama(Y = as.vector(y),
                    A = a,
@@ -235,11 +177,7 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRU
     type = c('true', 'xfdr', 'xfl', 'bama', 'hima', 'fb'),
     # Delta = c(Delta, dr_delta, drl_delta, bama_delta, hima_delta, fb_delta),
     Delta = c(Delta_0, dr_delta, drl_delta, bama_delta, hima_delta, fb_delta),
-    Delta_cil = c(Delta_0, dr_d_cil, drl_d_cil, bama_d_cil, NA, NA),
-    Delta_cih = c(Delta_0, dr_d_cih, drl_d_cih, bama_d_cih, NA, NA),
     Delta_s = c(Delta_s, dr_delta_s, drl_delta_s, bama_delta_s, hima_delta_s, fb_delta_s),
-    Delta_s_cil = c(Delta_s, dr_ds_cil, drl_ds_cil, bama_ds_cil, NA, NA),
-    Delta_s_cih = c(Delta_s, dr_ds_cih, drl_ds_cih, bama_ds_cih, NA, NA),
     # R = c(R, dr_r, drl_r, bama_r, hima_r)
     R = c(R_0, dr_r, drl_r, bama_r, hima_r, fb_r),
     R_cil = c(R, dr_r_cil, drl_r_cil, bama_r_cil, NA, NA),
@@ -262,9 +200,9 @@ sim_params <- expand.grid(n = c(100, 500),
 # with(tst, simfn(n = n,
 #                 p = p,
 #                 q = q,
-#                 sig = sig,
+#                 sig = 0.0001,
 #                 R = 0.5,
-#                 run = run,
+#                 run = run-1,
 #                 write = FALSE))
 
 options(
