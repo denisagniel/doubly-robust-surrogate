@@ -7,33 +7,55 @@ library(crossurr)
 library(clustermq)
 
 
-simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
+simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRUE) {
   library(tidyverse)
   library(here)
   library(glue)
+  library(bama)
   library(mvnfast)
   library(SuperLearner)
   library(crossurr)
+  library(HIMA)
   library(clustermq)
+  library(freebird)
   
-  Delta <- 2.25
-  Delta_s <- Delta*(1-R)
-  q <- 2
+  # browser()
+  set.seed(0)
+  ax_beta <- rnorm(q)
+  beta_s <- matrix(c(seq(-1, 1, length = 5),
+                     rep(0, q - 5)),
+                   q, p)
+  beta_s0 <- matrix(c(seq(-2, 0, length = 5), 
+                      rep(0, q - 5)),
+                    q, p)
+  alpha_s1 <- matrix(c(0.75, 0.25, runif(p-2)), n, p, byrow = TRUE)
+  alpha_s0 <- matrix(c(0, 0, runif(p- 2) - 0.5), n, p, byrow = TRUE)
+  if (!linear) {
+    delta <- exp(alpha_s1[1,1]) + alpha_s1[1,2] - exp(alpha_s0[1,1]) - alpha_s0[1,2]
+  } else {
+    delta <- alpha_s1[1,1] + alpha_s1[1,2] - alpha_s0[1,1] - alpha_s0[1,2]
+  }
   
-  Sigma <- matrix(rho, p, p) + (1-rho)*diag(p)
-  x1 <- runif(n, -2, 5)
-  x2 <- rbinom(n, prob = 0.5, size = 1)
-  x <- cbind(x1, x2)
-  a <- rbinom(n, prob = plogis(-x1 + 2*x1*x2), size = 1)
+  Delta_s <- delta*(1-R)/R
+  Delta <- Delta_s + delta
   
-  s_spm <- matrix(rep(1:0, c(10, p - 10)), n, p, byrow = TRUE)
-  s_1 <-  1.5 + (x1 + x2)*s_spm + rmvn(n, mu = rep(0, p), sigma = Sigma)
-  s_0 <- 2 + x2*s_spm - x1*x2 + rmvn(n, mu = rep(0, p), sigma = Sigma)
+  set.seed(run)
+  x <- rnorm(n*q, sd = 1) %>% matrix(n, q)
+  a <- rbinom(n, prob = plogis(x %*% ax_beta), size = 1)
+  
+  s_1 <- alpha_s1 + x %*% beta_s + rnorm(n*p, sd = sig) %>% matrix(n, p)
+  s_0 <- alpha_s0 + x %*% beta_s0 + rnorm(n*p, sd = sig) %>% matrix(n, p)
   s <- s_1*a + (1-a)*s_0
   
-  y_1 <- Delta_s + x[,1] + x[,2] + rowMeans(s_1[,1:15]) + rnorm(n)
-  y_0 <- x[,1] + x[,2] + rowMeans(s_0[,1:15]) + rnorm(n)
+  if (linear) {
+    y_1 <- Delta_s + rowMeans(x[,1:pmin(q, 25)]) + s_1[,1] + s_1[,2] + rnorm(n, sd = sig)
+    y_0 <- rowMeans(x[,1:pmin(q, 25)]) + s_0[,1] + s_0[,2] + rnorm(n, sd = sig)
+  } else {
+    y_1 <- Delta_s + rowMeans(x) + exp(s_1[,1]) + s_1[,2] + rnorm(n, sd = sig)
+    y_0 <- rowMeans(x) + exp(s_0[,1]) + s_0[,2] + rnorm(n, sd = sig)
+  }
   y <- y_1*a + (1-a)*y_0
+  
   
   dsi <- tibble(
     id = 1:n,
@@ -45,9 +67,9 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
     sn = glue('s.{rep(1:p, each = n)}')
   )
   xds <- tibble(
-    id = rep(1:n, 2),
+    id = rep(1:n, q),
     x = c(x),
-    xn = glue('x.{rep(1:2, each = n)}')
+    xn = glue('x.{rep(1:q, each = n)}')
   ) %>%
     spread(xn, x)
   
@@ -57,81 +79,52 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
     spread(sn, s) %>%
     inner_join(xds)
   
-  xf_delta_s <- xfit_dr(ds = wds,
-                        x = c(paste('s.', 1:p, sep =''),
-                              paste('x.', 1:q, sep ='')),
-                        y = 'y',
-                        a = 'a',
-                        K = 4,
-                        outcome_learners = c("SL.mean", "SL.glmnet", 
-                                             "SL.ridge", "SL.lm", "SL.svm", 'SL.ranger'),
-                        ps_learners = c("SL.mean", "SL.glmnet", 
-                                        "SL.glm", "SL.lda", "SL.qda",
-                                        "SL.svm", 'SL.ranger'),
-                        trim_at = 0.01,
-                        mthd = 'superlearner')
+  xf_surr <- xf_surrogate(ds = wds,
+                          x = paste('x.', 1:q, sep =''),
+                          s = paste('s.', 1:p, sep =''),
+                          a = 'a',
+                          y = 'y',
+                          K = 4,
+                          outcome_learners = c("SL.mean", "SL.glmnet", 
+                                               "SL.ridge", "SL.lm", "SL.svm", 'SL.ranger'),
+                          ps_learners = c("SL.mean", "SL.glmnet", 
+                                          "SL.glm", "SL.lda", "SL.qda",
+                                          "SL.svm", 'SL.ranger'),
+                          trim_at = 0.01,
+                          mthd = 'superlearner',
+                          n_ptb = 1000)
+  xfl_surr <- xf_surrogate(ds = wds,
+                           x = paste('x.', 1:q, sep =''),
+                           s = paste('s.', 1:p, sep =''),
+                           a = 'a',
+                           y = 'y',
+                           K = 4,
+                           trim_at = 0.01,
+                           mthd = 'lasso',
+                           n_ptb = 1000)
   
-  xf_delta <- xfit_dr(ds = wds,
-                      x = c(paste('x.', 1:q, sep ='')),
-                      y = 'y',
-                      a = 'a',
-                      K = 4,
-                      outcome_learners = c("SL.mean", "SL.glmnet", 
-                                           "SL.ridge", "SL.lm", "SL.svm", 'SL.ranger'),
-                      ps_learners = c("SL.mean", "SL.glmnet", 
-                                      "SL.glm", "SL.lda", "SL.qda",
-                                      "SL.svm", 'SL.ranger'),
-                      trim_at = 0.01,
-                      mthd = 'superlearner')
-  
-  dr_delta_s <- xf_delta_s$estimate
-  dr_delta <- xf_delta$estimate
+  dr_delta <- xf_surr$deltahat
+  drl_delta <- xfl_surr$deltahat
+  dr_delta_s <- xf_surr$deltahat_s
+  drl_delta_s <- xfl_surr$deltahat_s
   dr_r <- 1 - dr_delta_s/dr_delta
-  
-  dr_ds_cil <- dr_delta_s - 1.96*xf_delta_s$se
-  dr_ds_cih <- dr_delta_s + 1.96*xf_delta_s$se
-  dr_d_cil <- dr_delta - 1.96*xf_delta$se
-  dr_d_cih <- dr_delta + 1.96*xf_delta$se
-  
-  phi_ds <- xf_delta_s$observation_data[[1]] %>% select(u_i)
-  phi_d <- xf_delta$observation_data[[1]] %>% select(u_i)
-  phi <- cbind(phi_ds, phi_d) %>% as.matrix
-  gdot <- c(dr_delta^(-1), dr_delta_s/dr_delta^2)
-  Sigma <- t(phi) %*% phi / n
-  sigma <- t(gdot) %*% Sigma %*% gdot
-  r_se <- sqrt(sigma)/sqrt(n)
-  
-  dr_r_cil <- dr_r - 1.96*r_se
-  dr_r_cih <- dr_r + 1.96*r_se
-  
-  deltastar_s <- map(1:500, function(s) {
-    phi_ds %>%
-      mutate(g = rexp(n),
-             ustar_i = u_i*g) %>%
-      summarise(mean(ustar_i)) %>%
-      unlist
-  }) %>% unlist
-  deltastar <- map(1:500, function(s) {
-    phi_d %>%
-      mutate(g = rexp(n),
-             ustar_i = u_i*g) %>%
-      summarise(mean(ustar_i)) %>%
-      unlist
-  }) %>% unlist
-  R_bci_l <- quantile(1 - deltastar_s/deltastar, 0.025)
-  R_bci_h <- quantile(1 - deltastar_s/deltastar, 0.975)
-  
-  Delta_0 <- mean(y_1) - mean(y_0)
-  R_0 <- 1 - Delta_s/Delta_0
+  drl_r <- 1 - drl_delta_s/drl_delta
+  dr_r_cil <- dr_r - 1.96*xf_surr$R_se
+  dr_r_cih <- dr_r + 1.96*xf_surr$R_se
+  drl_r_cil <- drl_r - 1.96*xfl_surr$R_se
+  drl_r_cih <- drl_r + 1.96*xfl_surr$R_se
   
   # browser()
   
   out_ds <- data.frame(
-    R = dr_r,
-    R_cil = dr_r_cil,
-    R_cih = dr_r_cih,
-    R_bci_l = R_bci_l,
-    R_bci_h = R_bci_h
+    type = c('xfdr', 'xfl'),
+    R = c(dr_r, drl_r),
+    R_cil = c(dr_r_cil,drl_r_cil),
+    R_cih = c(dr_r_cih,drl_r_cih),
+    R_bci_l = c(xf_surr$R_qci_l, xfl_surr$R_qci_l),
+    R_bci_h = c(xf_surr$R_qci_h, xfl_surr$R_qci_h),
+    R_se = c(xf_surr$R_se, xfl_surr$R_se),
+    R_ptb_se = c(xf_surr$R_ptb_se, xfl_surr$R_ptb_se)
   ) %>% as_tibble
   if (write) {
     write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/ptb_n{n}-p{p}-R{R}-{run}.csv'))
@@ -139,17 +132,21 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
   out_ds
 }
 
-sim_params <- expand.grid(n = c(500, 1000),
-                          p = c(50, 100, 500),
-                          R = c(0.2, 0.9),
+sim_params <- expand.grid(n = c(100, 500),
+                          p = 100,
+                          q = 100,
+                          linear = TRUE,
+                          sig = c(0.1, 0.5),
+                          R = 0.5,
                           run = 1:1000)
-# tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
-# tst
-# with(tst, simfn(n = 500,
-#                 p = 50,
-#                 R = 0.9,
-#                 run = runif(1),
-#                 write = FALSE))
+tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
+tst
+with(tst, simfn(n = n,
+                p = p,
+                q = q,
+                R = R,
+                run = runif(1),
+                write = FALSE))
 
 # simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = -12)
 
