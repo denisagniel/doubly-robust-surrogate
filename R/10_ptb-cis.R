@@ -149,14 +149,14 @@ sim_params <- expand.grid(n = c(100, 500),
                           sig = c(0.1, 0.5),
                           R = 0.5,
                           run = 1:1000)
-tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
-tst
-with(tst, simfn(n = n,
-                p = p,
-                q = q,
-                R = R,
-                run = runif(1),
-                write = FALSE))
+# tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
+# tst
+# with(tst, simfn(n = n,
+#                 p = p,
+#                 q = q,
+#                 R = R,
+#                 run = runif(1),
+#                 write = FALSE))
 
 # simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = -12)
 
