@@ -78,8 +78,9 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRU
   wds <- ds %>%
     spread(sn, s) %>%
     inner_join(xds)
-  
-  xf_surr <- xf_surrogate(ds = wds,
+  # browser()
+  xf_surr <- map(1:20, function(i) {
+    xf_surrogate(ds = wds,
                           x = paste('x.', 1:q, sep =''),
                           s = paste('s.', 1:p, sep =''),
                           a = 'a',
@@ -92,8 +93,13 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRU
                                           "SL.svm", 'SL.ranger'),
                           trim_at = 0.01,
                           mthd = 'superlearner',
-                          n_ptb = 1000)
-  xfl_surr <- xf_surrogate(ds = wds,
+                          n_ptb = 1000,
+                 seed = i)
+  }) %>%
+    bind_rows %>%
+    summarise_all(median)
+  xfl_surr <- map(1:20, function(i) {
+    xf_surrogate(ds = wds,
                            x = paste('x.', 1:q, sep =''),
                            s = paste('s.', 1:p, sep =''),
                            a = 'a',
@@ -101,7 +107,11 @@ simfn <- function(n, p, q, sig = 1, R = 0.8, linear = TRUE, run = 0, write = TRU
                            K = 4,
                            trim_at = 0.01,
                            mthd = 'lasso',
-                           n_ptb = 1000)
+                           n_ptb = 1000,
+                 seed = i)
+  }) %>%
+    bind_rows %>%
+    summarise_all(median)
   
   dr_delta <- xf_surr$deltahat
   drl_delta <- xfl_surr$deltahat
@@ -139,14 +149,14 @@ sim_params <- expand.grid(n = c(100, 500),
                           sig = c(0.1, 0.5),
                           R = 0.5,
                           run = 1:1000)
-# tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
-# tst
-# with(tst, simfn(n = n,
-#                 p = p,
-#                 q = q,
-#                 R = R,
-#                 run = runif(1),
-#                 write = FALSE))
+tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
+tst
+with(tst, simfn(n = n,
+                p = p,
+                q = q,
+                R = R,
+                run = runif(1),
+                write = FALSE))
 
 # simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = -12)
 
@@ -159,5 +169,5 @@ options(
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 200)
+                  n_jobs = 500)
 saveRDS(sim_res, here('results/10_ptb-cis.rds'))
