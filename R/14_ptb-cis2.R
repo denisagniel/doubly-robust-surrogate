@@ -19,6 +19,8 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
   library(clustermq)
   library(freebird)
   
+  
+  # browser()
   Delta <- 2.25
   Delta_s <- Delta*(1-R)
   q <- 2
@@ -61,6 +63,11 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
     inner_join(xds)
   # browser()
   xf_surr <- map(1:20, function(i) {
+    print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+    print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+    print(glue('fitting partition {i}'))
+    print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+    print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
     xf_surrogate(ds = wds,
                  x = paste('x.', 1:q, sep =''),
                  s = paste('s.', 1:p, sep =''),
@@ -76,9 +83,16 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
                  mthd = 'superlearner',
                  n_ptb = 1000,
                  seed = i)
-  }) %>%
+  }) 
+  xf_median <- xf_surr %>%
     bind_rows %>%
-    summarise_all(median)
+    summarise_if(is.numeric, median)
+  
+  ptb_ds_all <- xf_surr %>%
+    bind_rows(.id = 'ptn') %>%
+    select(ptn, ptb_ds) %>%
+    unnest(ptb_ds)
+  
   xfl_surr <- map(1:20, function(i) {
     xf_surrogate(ds = wds,
                  x = paste('x.', 1:q, sep =''),
@@ -90,20 +104,33 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
                  mthd = 'lasso',
                  n_ptb = 1000,
                  seed = i)
-  }) %>%
+  }) 
+  xfl_median <- xfl_surr %>%
     bind_rows %>%
-    summarise_all(median)
+    summarise_if(is.numeric, median)
+  ptbl_ds_all <- xfl_surr %>%
+    bind_rows(.id = 'ptn') %>%
+    select(ptn, ptb_ds) %>%
+    unnest(ptb_ds)
   
-  dr_delta <- xf_surr$deltahat
-  drl_delta <- xfl_surr$deltahat
-  dr_delta_s <- xf_surr$deltahat_s
-  drl_delta_s <- xfl_surr$deltahat_s
+  dr_r_pcil <- quantile(ptb_ds_all$R_g, 0.025)
+  dr_r_pcih <- quantile(ptb_ds_all$R_g, 0.975)
+  drl_r_pcil <- quantile(ptbl_ds_all$R_g, 0.025)
+  drl_r_pcih <- quantile(ptbl_ds_all$R_g, 0.975)
+  
+  dr_delta <- xf_median$deltahat
+  drl_delta <- xfl_median$deltahat
+  dr_delta_s <- xf_median$deltahat_s
+  drl_delta_s <- xfl_median$deltahat_s
   dr_r <- 1 - dr_delta_s/dr_delta
   drl_r <- 1 - drl_delta_s/drl_delta
-  dr_r_cil <- dr_r - 1.96*xf_surr$R_se
-  dr_r_cih <- dr_r + 1.96*xf_surr$R_se
-  drl_r_cil <- drl_r - 1.96*xfl_surr$R_se
-  drl_r_cih <- drl_r + 1.96*xfl_surr$R_se
+  dr_r_cil <- dr_r - 1.96*xf_median$R_se
+  dr_r_cih <- dr_r + 1.96*xf_median$R_se
+  drl_r_cil <- drl_r - 1.96*xfl_median$R_se
+  drl_r_cih <- drl_r + 1.96*xfl_median$R_se
+  
+  comp_cil <- (dr_r_cil + dr_r_pcil)/2
+  comp_cih <- (dr_r_cih + dr_r_pcih)/2
   
   # browser()
   
@@ -112,10 +139,12 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
     R = c(dr_r, drl_r),
     R_cil = c(dr_r_cil,drl_r_cil),
     R_cih = c(dr_r_cih,drl_r_cih),
-    R_bci_l = c(xf_surr$R_qci_l, xfl_surr$R_qci_l),
-    R_bci_h = c(xf_surr$R_qci_h, xfl_surr$R_qci_h),
-    R_se = c(xf_surr$R_se, xfl_surr$R_se),
-    R_ptb_se = c(xf_surr$R_ptb_se, xfl_surr$R_ptb_se)
+    R_qbci_l = c(dr_r_pcil, drl_r_pcil),
+    R_qbci_h = c(dr_r_pcih, drl_r_pcih),
+    R_mbci_l = c(xf_median$R_qci_l, xfl_median$R_qci_l),
+    R_mbci_h = c(xf_median$R_qci_h, xfl_median$R_qci_h),
+    R_se = c(xf_median$R_se, xfl_median$R_se),
+    R_ptb_se = c(xf_median$R_ptb_se, xfl_median$R_ptb_se)
   ) %>% as_tibble
   if (write) {
     write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/ptb_n{n}-p{p}-R{R}-{run}.csv'))
@@ -129,11 +158,11 @@ sim_params <- expand.grid(n = 500,
                           run = 1:1000)
 tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
 tst
-with(tst, simfn(n = n,
-                p = p,
-                R = R,
-                run = runif(1),
-                write = FALSE))
+# with(tst, simfn(n = n,
+#                 p = 50,
+#                 R = R,
+#                 run = runif(1),
+#                 write = FALSE))
 
 # simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = -12)
 
@@ -141,7 +170,7 @@ with(tst, simfn(n = n,
 options(
   clustermq.defaults = list(ptn="medium",
                             log_file="Rout/log%a.log",
-                            time_amt = "72:00:00"
+                            time_amt = "120:00:00"
   )
 )
 sim_res <- Q_rows(sim_params, simfn, 
