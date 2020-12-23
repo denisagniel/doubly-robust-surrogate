@@ -147,7 +147,7 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
     R_ptb_se = c(xf_median$R_ptb_se, xfl_median$R_ptb_se)
   ) %>% as_tibble
   if (write) {
-    write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/ptb_n{n}-p{p}-R{R}-{run}.csv'))
+    write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/ptb2_n{n}-p{p}-R{R}-{run}.csv'))
   }
   out_ds
 }
@@ -158,11 +158,11 @@ sim_params <- expand.grid(n = 500,
                           run = 1:1000)
 tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
 tst
-# with(tst, simfn(n = n,
-#                 p = 50,
-#                 R = R,
-#                 run = runif(1),
-#                 write = FALSE))
+with(tst, simfn(n = n,
+                p = 50,
+                R = R,
+                run = runif(1),
+                write = TRUE))
 
 # simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = -12)
 
