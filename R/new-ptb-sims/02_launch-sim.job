@@ -9,4 +9,4 @@
 #SBATCH --mail-type=END         # Mail when the job ends
 
 module load gcc/6.2.0
-R CMD BATCH --no-save 01_sim.R Rout/01_sim.Rout
+R CMD BATCH --no-save 01_intx-sim.R Rout/01_intx-sim.Rout

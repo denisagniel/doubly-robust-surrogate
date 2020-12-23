@@ -198,5 +198,5 @@ options(
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 18)
+                  n_jobs = 10)
 saveRDS(sim_res, here('results/new-ptb-sims/01_sim-results.rds'))
