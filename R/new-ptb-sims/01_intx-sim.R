@@ -191,12 +191,12 @@ sim_params <- expand.grid(n = 500,
 
 
 options(
-  clustermq.defaults = list(ptn="short",
+  clustermq.defaults = list(ptn="medium",
                             log_file="Rout/log%a.log",
-                            time_amt = "12:00:00"
+                            time_amt = "120:00:00"
   )
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 10)
+                  n_jobs = 1000)
 saveRDS(sim_res, here('results/new-ptb-sims/01_sim-results.rds'))
