@@ -179,7 +179,7 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
 sim_params <- expand.grid(n = 500,
                           p = c(50, 100, 500),
                           R = c(0.2, 0.9),
-                          run = 1:3)
+                          run = 1:1000)
 # tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
 # tst
 # with(tst, simfn(n = n,
