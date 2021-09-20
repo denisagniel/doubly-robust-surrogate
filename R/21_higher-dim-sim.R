@@ -69,6 +69,9 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
     spread(sn, s) %>%
     inner_join(xds)
   
+  # browser()
+  
+  print('fit xfdr')
   xf_surr <- map(1:r, function(xx) {
     xf_surrogate(ds = wds,
                  x = paste('x.', 1:q, sep =''),
@@ -82,7 +85,7 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
                                  "SL.glm", "SL.lda", "SL.qda",
                                  "SL.svm", 'SL.ranger'),
                  trim_at = 0.01,
-                 mthd = 'superlearner')
+                 mthd = 'superlearner', ncores = K)
   })
   
   xf_ds <- tibble(
@@ -94,6 +97,7 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
     R_cih = R + 1.96*map(xf_surr, pluck, 'R_se') %>% unlist %>% median
   )
   
+  print('fit xfl')
   xfl_surr <- map(1:r, function(xx) {
     xf_surrogate(ds = wds,
                  x = paste('x.', 1:q, sep =''),
@@ -102,7 +106,8 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
                  y = 'y',
                  K = K,
                  trim_at = 0.01,
-                 mthd = 'lasso')
+                 mthd = 'lasso',
+                 ncores = K)
   })
   
   xfl_ds <- tibble(
@@ -114,6 +119,7 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
     R_cih = R + 1.96*map(xfl_surr, pluck, 'R_se') %>% unlist %>% median
   )
  
+  print('fit xfs')
   xfs_surr <- map(1:r, function(xx) {
     xf_surrogate(ds = wds,
                  x = paste('x.', 1:q, sep =''),
@@ -122,7 +128,8 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
                  y = 'y',
                  K = K,
                  trim_at = 0.01,
-                 mthd = 'sis')
+                 mthd = 'sis',
+                 ncores = K)
   })
   
   xfs_ds <- tibble(
@@ -133,6 +140,7 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
     R_cil = R - 1.96*map(xfs_surr, pluck, 'R_se') %>% unlist %>% median,
     R_cih = R + 1.96*map(xfs_surr, pluck, 'R_se') %>% unlist %>% median)
   
+  print('fit xfc')
   xfc_surr <- map(1:r, function(xx) {
     xf_surrogate(ds = wds,
                  x = paste('x.', 1:q, sep =''),
@@ -141,17 +149,19 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
                  y = 'y',
                  K = K,
                  trim_at = 0.01,
-                 mthd = 'cal')
+                 mthd = 'cal',
+                 ncores = K)
   })
   
   xfc_ds <- tibble(
-    type = 'xfs',
+    type = 'xfc',
     Delta = map(xfc_surr, pluck, 'deltahat') %>% unlist %>% median,
     Delta_s = map(xfc_surr, pluck, 'deltahat_s') %>% unlist %>% median,
     R = 1 - Delta_s/Delta,
     R_cil = R - 1.96*map(xfc_surr, pluck, 'R_se') %>% unlist %>% median,
     R_cih = R + 1.96*map(xfc_surr, pluck, 'R_se') %>% unlist %>% median)
   
+  print('fit hima')
   hima_tst <- try(hima(X = a,
                        Y = y,
                        M = s,
@@ -176,6 +186,7 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
     )
   }
   
+  print('fit fb')
   fb_tst <- freebird::hilma(Y = y,
                             G = s,
                             S = a %>% matrix(n, 1))
@@ -205,7 +216,6 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
     R_cih = NA
   )
   
-  browser()
   out_ds <- full_join(
     ds_0,
     xf_ds
@@ -221,7 +231,7 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
   
   # browser()
   if (write) {
-    write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res1_n{n}-p{p}-R{R}-{run}.csv'))
+    write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res1_n{n}-k{K}-R{R}-{run}.csv'))
   }
   out_ds
 }
@@ -231,16 +241,13 @@ sim_params <- expand.grid(n = 200,
                           r = c(1, 5, 11),
                           run = 1:1000) %>%
   filter(!(K == 20 & r == 11))
-# tst <- sim_params %>% sample_n(1)
-# tst
-# with(tst, simfn(n = n,
-#                 K = K,
-#                 r = r,
-#                 run = run,
-#                 write = FALSE))
-# # 
-# simfn(n = 100, p = 50, R = 0.9, write = FALSE, run = -12)
-
+tst <- sim_params %>% sample_n(1)
+tst
+with(tst, simfn(n = 200,
+                K = 5,
+                r = 1,
+                run = run,
+                write = FALSE))
 
 options(
   clustermq.defaults = list(ptn="medium",
