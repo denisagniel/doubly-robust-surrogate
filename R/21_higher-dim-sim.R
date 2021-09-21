@@ -229,9 +229,14 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
       full_join(hima_ds)
   }
   
+  out_ds <- out_ds %>%
+    mutate(n = n,
+           K = K,
+           r = r)
+  
   # browser()
   if (write) {
-    write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res1_n{n}-k{K}-R{R}-{run}.csv'))
+    write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res1_n{n}-k{K}-r{r}-{run}.csv'))
   }
   out_ds
 }
@@ -239,23 +244,23 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
 sim_params <- expand.grid(n = 200,
                           K = c(5, 20),
                           r = c(1, 5, 11),
-                          run = 1:1000) %>%
+                          run = 1:10) %>%
   filter(!(K == 20 & r == 11))
-tst <- sim_params %>% sample_n(1)
-tst
-with(tst, simfn(n = 200,
-                K = 5,
-                r = 1,
-                run = run,
-                write = FALSE))
+# tst <- sim_params %>% sample_n(1)
+# tst
+# with(tst, simfn(n = 200,
+#                 K = 5,
+#                 r = 1,
+#                 run = run,
+#                 write = TRUE))
 
 options(
-  clustermq.defaults = list(ptn="medium",
+  clustermq.defaults = list(ptn="short",
                             log_file="Rout/log%a.log",
-                            time_amt = "72:00:00"
+                            time_amt = "12:00:00"
   )
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 200)
+                  n_jobs = 10)
 saveRDS(sim_res, here('results/21_higher-dim-sim_results.rds'))
