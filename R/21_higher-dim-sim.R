@@ -85,7 +85,7 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
                                  "SL.glm", "SL.lda", "SL.qda",
                                  "SL.svm", 'SL.ranger'),
                  trim_at = 0.01,
-                 mthd = 'superlearner', ncores = K)
+                 mthd = 'superlearner', ncores = 8)
   })
   
   xf_ds <- tibble(
@@ -107,7 +107,7 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
                  K = K,
                  trim_at = 0.01,
                  mthd = 'lasso',
-                 ncores = K)
+                 ncores = 8)
   })
   
   xfl_ds <- tibble(
@@ -129,7 +129,7 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
                  K = K,
                  trim_at = 0.01,
                  mthd = 'sis',
-                 ncores = K)
+                 ncores = 8)
   })
   
   xfs_ds <- tibble(
@@ -150,7 +150,7 @@ simfn <- function(n, K, r, run = 0, write = TRUE) {
                  K = K,
                  trim_at = 0.01,
                  mthd = 'cal',
-                 ncores = K)
+                 ncores = 8)
   })
   
   xfc_ds <- tibble(
@@ -249,7 +249,7 @@ sim_params <- expand.grid(n = 200,
 # tst <- sim_params %>% sample_n(1)
 # tst
 # with(tst, simfn(n = 200,
-#                 K = 5,
+#                 K = 20,
 #                 r = 1,
 #                 run = run,
 #                 write = TRUE))
