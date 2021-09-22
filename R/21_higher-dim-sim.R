@@ -86,7 +86,7 @@ simfn <- function(n, K, r, est, run = 0, write = TRUE) {
                                    "SL.glm", "SL.lda", "SL.qda",
                                    "SL.svm", 'SL.ranger'),
                    trim_at = 0.01,
-                   mthd = 'superlearner', ncores = 8)
+                   mthd = 'superlearner', ncores = 1)
     })
     
     out_ds <- tibble(
@@ -108,7 +108,7 @@ simfn <- function(n, K, r, est, run = 0, write = TRUE) {
                    K = K,
                    trim_at = 0.01,
                    mthd = 'lasso',
-                   ncores = 8)
+                   ncores = 1)
     })
     
     out_ds <- tibble(
@@ -130,7 +130,7 @@ simfn <- function(n, K, r, est, run = 0, write = TRUE) {
                    K = K,
                    trim_at = 0.01,
                    mthd = 'sis',
-                   ncores = 8)
+                   ncores = 1)
     })
     
     out_ds <- tibble(
@@ -152,7 +152,7 @@ simfn <- function(n, K, r, est, run = 0, write = TRUE) {
                    K = K,
                    trim_at = 0.01,
                    mthd = 'cal',
-                   ncores = 8)
+                   ncores = 1)
     })
     
     out_ds <- tibble(
@@ -285,8 +285,7 @@ sim_params <- expand.grid(n = 200,
 options(
   clustermq.defaults = list(ptn="short",
                             log_file="Rout/log%a.log",
-                            time_amt = "12:00:00",
-                            nn = 8
+                            time_amt = "12:00:00"
   )
 )
 sim_res <- Q_rows(sim_params, simfn, 
