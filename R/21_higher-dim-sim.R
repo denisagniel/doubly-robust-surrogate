@@ -271,8 +271,7 @@ sim_params <- expand.grid(n = 200,
                                   'xfs',
                                   'hima',
                                   'fb'),
-                          run = 1:10) %>%
-  filter(!(K == 20 & r == 11))
+                          run = 1:1000)
 # tst <- sim_params %>% sample_n(1)
 # tst
 # with(tst, simfn(n = 200,
@@ -283,12 +282,12 @@ sim_params <- expand.grid(n = 200,
 #                 write = TRUE))
 
 options(
-  clustermq.defaults = list(ptn="short",
+  clustermq.defaults = list(ptn="medium",
                             log_file="Rout/log%a.log",
-                            time_amt = "12:00:00"
+                            time_amt = "48:00:00"
   )
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 10)
+                  n_jobs = 200)
 saveRDS(sim_res, here('results/21_higher-dim-sim_results.rds'))
