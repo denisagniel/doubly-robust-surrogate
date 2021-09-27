@@ -262,7 +262,7 @@ simfn <- function(n, K, r, est, run = 0, write = TRUE) {
   out_ds
 }
 
-sim_params <- expand.grid(n = 200,
+sim_params <- expand.grid(n = c(50, 200),
                           K = c(2, 10),
                           r = c(1, 5, 11),
                           est = c('xfdr',
@@ -289,5 +289,5 @@ options(
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 200)
+                  n_jobs = 1000)
 saveRDS(sim_res, here('results/21_higher-dim-sim_results.rds'))
