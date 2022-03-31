@@ -21,9 +21,11 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
   library(clustermq)
   library(freebird)
   
+  set.seed(run)
   Delta <- 2.25
   Delta_s <- Delta*(1-R)
   q <- 2
+  sig <- sqrt(5/p)
   
   Sigma <- matrix(rho, p, p) + (1-rho)*diag(p)
   x1 <- runif(n, -2, 5)
@@ -34,10 +36,15 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
   s_spm <- matrix(rep(1:0, c(10, p - 10)), n, p, byrow = TRUE)
   s_1 <-  1.5 + (x1 + x2)*s_spm + rmvn(n, mu = rep(0, p), sigma = Sigma)
   s_0 <- 2 + x2*s_spm - x1*x2 + rmvn(n, mu = rep(0, p), sigma = Sigma)
+  # eta_1 <- 1.5 + 10*(x1 + x2)*s_spm + rmvn(n, mu = rep(0, p), sigma = Sigma)
+  # eta_0 <- 2 + 10*x2*s_spm - 10*x1*x2 + rmvn(n, mu = rep(0, p), sigma = Sigma)
+  # s_1 <- rbinom(n*p, size = 1, prob = plogis(eta_1)) %>% matrix(n, p)
+  # s_0 <- rbinom(n*p, size = 1, prob = plogis(eta_0)) %>% matrix(n, p)
   s <- s_1*a + (1-a)*s_0
   
-  y_1 <- Delta_s + x[,1] + x[,2] + rowMeans(s_1[,1:15]) + rnorm(n)
-  y_0 <- x[,1] + x[,2] + rowMeans(s_0[,1:15]) + rnorm(n)
+  # browser()
+  y_1 <- Delta_s + x[,1] + x[,2] + rowMeans(s_1[,1:15]) + rnorm(n, sd = sig)
+  y_0 <- x[,1] + x[,2] + rowMeans(s_0[,1:15]) + rnorm(n, sd = sig)
   y <- y_1*a + (1-a)*y_0
   
   dsi <- tibble(
@@ -75,35 +82,52 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
                                           "SL.svm", 'SL.ranger'),
                           trim_at = 0.01,
                           mthd = 'superlearner')
+  xfr_surr <- xfr_surrogate(ds = wds,
+                          x = paste('x.', 1:q, sep =''),
+                          s = paste('s.', 1:p, sep =''),
+                          a = 'a',
+                          y = 'y',
+                          K = 4,
+                          outcome_learners = c("SL.mean", "SL.glmnet", 
+                                               "SL.ridge", "SL.lm", "SL.svm", 'SL.ranger'),
+                          ps_learners = c("SL.mean", "SL.glmnet", 
+                                          "SL.glm", "SL.lda", "SL.qda",
+                                          "SL.svm", 'SL.ranger'),
+                          trim_at = 0.01,
+                          mthd = 'superlearner',
+                          splits = 5)
   xfl_surr <- xf_surrogate(ds = wds,
-                           x = paste('x.', 1:q, sep =''),
-                           s = paste('s.', 1:p, sep =''),
-                           a = 'a',
-                           y = 'y',
-                           K = 4,
-                           trim_at = 0.01,
-                           mthd = 'lasso')
-  
+                          x = paste('x.', 1:q, sep =''),
+                          s = paste('s.', 1:p, sep =''),
+                          a = 'a',
+                          y = 'y',
+                          K = 4,
+                          trim_at = 0.01,
+                          mthd = 'lasso')
   dr_delta <- xf_surr$deltahat
   drl_delta <- xfl_surr$deltahat
+  drr_delta <- xfr_surr$Dm
   dr_delta_s <- xf_surr$deltahat_s
   drl_delta_s <- xfl_surr$deltahat_s
+  drr_delta_s <- xfr_surr$Dsm
   dr_r <- 1 - dr_delta_s/dr_delta
   drl_r <- 1 - drl_delta_s/drl_delta
+  drr_r <- 1 - xfr_surr$Rm
   dr_r_cil <- dr_r - 1.96*xf_surr$R_se
   dr_r_cih <- dr_r + 1.96*xf_surr$R_se
   drl_r_cil <- drl_r - 1.96*xfl_surr$R_se
   drl_r_cih <- drl_r + 1.96*xfl_surr$R_se
+  drr_r_cil <- xfr_surr$R_cil0
+  drr_r_cih <- xfr_surr$R_cih0
   
   bama_tst <- bama(Y = as.vector(y),
                    A = a,
                    M = s,
                    C1 = cbind(1, x),
                    C2 = cbind(1, x),
-                   beta.m = rep(0, p),
-                   alpha.a = rep(0, p),
                    burnin = 2000,
-                   ndraws = 1000)
+                   ndraws = 3000,
+                   method = 'BSLMM')
   bama_nie <- colMeans(bama_tst$alpha.a* bama_tst$beta.m) %>% sum
   bama_nde <- mean(bama_tst$beta.a)
   bama_te <- bama_nie + bama_nde
@@ -155,14 +179,14 @@ simfn <- function(n, p, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
   # browser()
   
   out_ds <- data.frame(
-    type = c('true', 'xfdr', 'xfl', 'bama', 'hima', 'fb'),
+    type = c('true', 'xfdr', 'xfr', 'xfl', 'bama', 'hima', 'fb'),
     # Delta = c(Delta, dr_delta, drl_delta, bama_delta, hima_delta, fb_delta),
-    Delta = c(Delta_0, dr_delta, drl_delta, bama_delta, hima_delta, fb_delta),
-    Delta_s = c(Delta_s, dr_delta_s, drl_delta_s, bama_delta_s, hima_delta_s, fb_delta_s),
+    Delta = c(Delta_0, dr_delta, drr_delta, drl_delta, bama_delta, hima_delta, fb_delta),
+    Delta_s = c(Delta_s, dr_delta_s, drr_delta_s,  drl_delta_s, bama_delta_s, hima_delta_s, fb_delta_s),
     # R = c(R, dr_r, drl_r, bama_r, hima_r)
-    R = c(R_0, dr_r, drl_r, bama_r, hima_r, fb_r),
-    R_cil = c(R, dr_r_cil, drl_r_cil, bama_r_cil, NA, NA),
-    R_cih = c(R, dr_r_cih, drl_r_cih, bama_r_cih, NA, NA)
+    R = c(R_0, dr_r, drr_r, drl_r, bama_r, hima_r, fb_r),
+    R_cil = c(R, dr_r_cil, drr_r_cil, drl_r_cil, bama_r_cil, NA, NA),
+    R_cih = c(R, dr_r_cih, drr_r_cih, drl_r_cih, bama_r_cih, NA, NA)
   ) %>% as_tibble
   if (write) {
     write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res1_n{n}-p{p}-R{R}-{run}.csv'))
@@ -182,7 +206,7 @@ sim_params <- expand.grid(n = 500,
 #                 run = run,
 #                 write = FALSE))
 # # 
-# simfn(n = 100, p = 50, R = 0.9, write = FALSE, run = -12)
+# simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = 850)
 
 
 options(
