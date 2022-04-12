@@ -9,7 +9,7 @@ library(HIMA)
 library(clustermq)
 library(freebird)
 
-simfn <- function(n, p, sigma_ms,  R = 0.5, rho = 0.4, run = 0, write = TRUE) {
+simfn <- function(n, p, dim_s,  R = 0.5, rho = 0.4, run = 0, write = TRUE) {
   library(tidyverse)
   library(here)
   library(glue)
@@ -27,7 +27,6 @@ simfn <- function(n, p, sigma_ms,  R = 0.5, rho = 0.4, run = 0, write = TRUE) {
   q <- 2
   sig <- 1/sqrt(p)
   sig_s<- 3
-  dim_s <- p
   
   Sigma <- matrix(rho, p, p) + (1-rho)*diag(p)
   x1 <- runif(n, -2, 5)
@@ -45,11 +44,9 @@ simfn <- function(n, p, sigma_ms,  R = 0.5, rho = 0.4, run = 0, write = TRUE) {
   m <- m_1*a + (1-a)*m_0
   
   beta_1 <- abs(rnorm(p*dim_s))/p %>% matrix(p, dim_s)
-  beta_0 <- abs(rnorm(p*dim_s))/p %>% matrix(p, dim_s)
   
-  
-  s_1 <- m_1 %*% beta_1 + rnorm(n*dim_s, sd = sigma_ms) %>% matrix(n, dim_s)
-  s_0 <- m_0 %*% beta_1 + rnorm(n*dim_s, sd = sigma_ms) %>% matrix(n, dim_s)
+  s_1 <- m_1 %*% beta_1 + rnorm(n*dim_s, sd = 0.1) %>% matrix(n, dim_s)
+  s_0 <- m_0 %*% beta_1 + rnorm(n*dim_s, sd = 0.1) %>% matrix(n, dim_s)
   s <- s_1*a + (1-a)*s_0
   
   # browser()
@@ -158,16 +155,16 @@ simfn <- function(n, p, sigma_ms,  R = 0.5, rho = 0.4, run = 0, write = TRUE) {
 sim_params <- expand.grid(n = 500,
                           p = 50,
                           R = 0.5,
-                          sigma_ms = c(0, 1, 3, 10),
+                          dim_s = c(1, 10, 50, 75),
                           run = 1:1000)
-tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
-tst
-with(tst, simfn(n = n,
-                p = p,
-                R = R,
-                sigma_ms = sigma_ms,
-                run = run,
-                write = FALSE))
+# tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
+# tst
+# with(tst, simfn(n = n,
+#                 p = p,
+#                 R = R,
+#                 dim_s = dim_s,
+#                 run = run,
+#                 write = FALSE))
 # # 
 # simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = 850)
 
@@ -181,4 +178,4 @@ options(
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
                   n_jobs = 200)
-saveRDS(sim_res, here('results/01_sim-results.rds'))
+saveRDS(sim_res, here('results/31_surrogate-only-results.rds'))
