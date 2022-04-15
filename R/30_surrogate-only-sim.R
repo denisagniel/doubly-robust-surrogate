@@ -9,7 +9,7 @@ library(HIMA)
 library(clustermq)
 library(freebird)
 
-simfn <- function(n, p, dim_s,  R = 0.5, rho = 0.4, run = 0, write = TRUE) {
+simfn <- function(n, p, dim_s, beta_sparse, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
   library(tidyverse)
   library(here)
   library(glue)
@@ -44,6 +44,7 @@ simfn <- function(n, p, dim_s,  R = 0.5, rho = 0.4, run = 0, write = TRUE) {
   m <- m_1*a + (1-a)*m_0
   
   beta_1 <- abs(rnorm(p*dim_s))/p %>% matrix(p, dim_s)
+  beta_1[beta_sparse:p,] <- 0
   
   s_1 <- m_1 %*% beta_1 + rnorm(n*dim_s, sd = 0.1) %>% matrix(n, dim_s)
   s_0 <- m_0 %*% beta_1 + rnorm(n*dim_s, sd = 0.1) %>% matrix(n, dim_s)
@@ -147,7 +148,7 @@ simfn <- function(n, p, dim_s,  R = 0.5, rho = 0.4, run = 0, write = TRUE) {
     R_cih = c(R, dr_r_cih, drl_r_cih)
   ) %>% as_tibble
   if (write) {
-    write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res-surr_sigma{sigma_ms}-{run}.csv'))
+    write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res-surr_dim{dim_s}-{run}.csv'))
   }
   out_ds
 }
@@ -155,16 +156,18 @@ simfn <- function(n, p, dim_s,  R = 0.5, rho = 0.4, run = 0, write = TRUE) {
 sim_params <- expand.grid(n = 500,
                           p = 50,
                           R = 0.5,
+                          beta_sparse = c(5, 15, 25, 50),
                           dim_s = c(1, 10, 50, 75),
                           run = 1:1000)
-# tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
-# tst
-# with(tst, simfn(n = n,
-#                 p = p,
-#                 R = R,
-#                 dim_s = dim_s,
-#                 run = run,
-#                 write = FALSE))
+tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
+tst
+with(tst, simfn(n = n,
+                p = p,
+                R = R,
+                beta_sparse = beta_sparse,
+                dim_s = dim_s,
+                run = run,
+                write = TRUE))
 # # 
 # simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = 850)
 
