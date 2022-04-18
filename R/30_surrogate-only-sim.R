@@ -159,15 +159,15 @@ sim_params <- expand.grid(n = 500,
                           beta_sparse = c(5, 15, 25, 50),
                           dim_s = c(1, 10, 50, 75),
                           run = 1:1000)
-tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
-tst
-with(tst, simfn(n = n,
-                p = p,
-                R = R,
-                beta_sparse = beta_sparse,
-                dim_s = dim_s,
-                run = run,
-                write = TRUE))
+# tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
+# tst
+# with(tst, simfn(n = n,
+#                 p = p,
+#                 R = R,
+#                 beta_sparse = beta_sparse,
+#                 dim_s = dim_s,
+#                 run = run,
+#                 write = TRUE))
 # # 
 # simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = 850)
 
