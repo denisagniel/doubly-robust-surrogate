@@ -153,7 +153,7 @@ simfn <- function(n, dim_s, zeta_3, run = 0, write = TRUE) {
 sim_params <- expand.grid(n = c(50, 1000),
                           dim_s = c(1, 10, 50),
                           zeta_3 = c(0, 10),
-                          run = 1:3)
+                          run = 1:1000)
 # tst <- sim_params %>% sample_n(1)
 # tst
 # with(tst, simfn(n = n,
@@ -166,10 +166,10 @@ sim_params <- expand.grid(n = c(50, 1000),
 options(
   clustermq.defaults = list(ptn="short",
                             log_file="Rout/log%a.log",
-                            time_amt = "1:00:00"
+                            time_amt = "6:00:00"
   )
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 4)
+                  n_jobs = 500)
 saveRDS(sim_res, here('results/31_surrogate-only-results.rds'))
