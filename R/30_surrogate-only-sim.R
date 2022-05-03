@@ -9,7 +9,7 @@ library(HIMA)
 library(clustermq)
 library(freebird)
 
-simfn <- function(n, p, dim_s, beta_sparse, R = 0.5, rho = 0.4, run = 0, write = TRUE) {
+simfn <- function(n, dim_s, zeta_3, run = 0, write = TRUE) {
   library(tidyverse)
   library(here)
   library(glue)
@@ -21,41 +21,42 @@ simfn <- function(n, p, dim_s, beta_sparse, R = 0.5, rho = 0.4, run = 0, write =
   library(clustermq)
   library(freebird)
   
+  # browser()
   set.seed(run)
-  Delta <- 2.25
-  Delta_s <- Delta*(1-R)
-  q <- 2
-  sig <- 1/sqrt(p)
-  sig_s<- 3
+
+  x <- rnorm(n)
+  xx <- matrix(c(x, rnorm(n)), n, 2)
+  a <- rbinom(n, prob = plogis(x), size = 1)
   
-  Sigma <- matrix(rho, p, p) + (1-rho)*diag(p)
-  x1 <- runif(n, -2, 5)
-  x2 <- rbinom(n, prob = 0.5, size = 1)
-  x <- cbind(x1, x2)
-  a <- rbinom(n, prob = plogis(-x1 + 2*x1*x2), size = 1)
+  beta_1 <- 2
+  beta_2 <- 0.1
+  eps_u <- rnorm(n)
+  u <- beta_1*a + beta_2*x*a + eps_u
+  u1 <- beta_1 + beta_2*x + eps_u
+  u0 <- eps_u
   
-  s_spm <- matrix(rep(1:0, c(10, p - 10)), n, p, byrow = TRUE)
-  m_1 <-  1.5 + (x1 + x2)*s_spm + rmvn(n, mu = rep(0, p), sigma = Sigma)*sig_s
-  m_0 <- 2 + x2*s_spm - x1*x2 + rmvn(n, mu = rep(0, p), sigma = Sigma)*sig_s
-  # eta_1 <- 1.5 + 10*(x1 + x2)*s_spm + rmvn(n, mu = rep(0, p), sigma = Sigma)
-  # eta_0 <- 2 + 10*x2*s_spm - 10*x1*x2 + rmvn(n, mu = rep(0, p), sigma = Sigma)
-  # s_1 <- rbinom(n*p, size = 1, prob = plogis(eta_1)) %>% matrix(n, p)
-  # s_0 <- rbinom(n*p, size = 1, prob = plogis(eta_0)) %>% matrix(n, p)
-  m <- m_1*a + (1-a)*m_0
+  gamma_1 <- 0.4
+  gamma_2 <- 2
+  eps_s <- rnorm(n)
+  s <- gamma_1*a + gamma_2*u + eps_s
+  s1 <- gamma_1 + gamma_2*u1 + eps_s
+  s0 <- gamma_2*u0 + eps_s
   
-  beta_1 <- abs(rnorm(p*dim_s))/p %>% matrix(p, dim_s)
-  beta_1[beta_sparse:p,] <- 0
+  ss <- matrix(c(s, rnorm(n*(dim_s - 1))), n, dim_s)
   
-  s_1 <- m_1 %*% beta_1 + rnorm(n*dim_s, sd = 0.1) %>% matrix(n, dim_s)
-  s_0 <- m_0 %*% beta_1 + rnorm(n*dim_s, sd = 0.1) %>% matrix(n, dim_s)
-  s <- s_1*a + (1-a)*s_0
+  zeta_1 <- 0.1
+  zeta_2 <- 1
+  eps_z <- rnorm(n)
+  y <- pnorm(x^2) + x^2*a + zeta_1*a + zeta_2*u + zeta_3*u*a + eps_z
+  y1 <- pnorm(x^2) + x^2 + zeta_1 + zeta_2*u1 + zeta_3*u1 + eps_z
+  y0 <- pnorm(x^2) +  zeta_2*u0 + eps_z
+  delta_0 <- mean(y1 - y0)
   
-  # browser()
+  e_u1 <- mean(beta_1 + beta_2*x + gamma_2/(gamma_2^2 + 1)*(s - gamma_1 - gamma_2*beta_1 - gamma_2*beta_2*x))
+  e_u0 <- mean(gamma_2/(gamma_2^2 + 1)*s)
   
-  # browser()
-  y_1 <- Delta_s + x[,1] + x[,2] + rowMeans(m_1[,1:15]) + rnorm(n, sd = sig)
-  y_0 <- x[,1] + x[,2] + rowMeans(m_0[,1:15]) + rnorm(n, sd = sig)
-  y <- y_1*a + (1-a)*y_0
+  delta_s0 <- zeta_1 + (zeta_2 + zeta_3)*e_u1 - zeta_2*e_u0 + mean(x^2)
+  r0 <- 1 - delta_s0/delta_0
   
   dsi <- tibble(
     id = 1:n,
@@ -63,12 +64,12 @@ simfn <- function(n, p, dim_s, beta_sparse, R = 0.5, rho = 0.4, run = 0, write =
   ) 
   sds <- tibble(
     id = rep(1:n, dim_s),
-    s = c(s),
+    s = c(ss),
     sn = glue('s.{rep(1:dim_s, each = n)}')
   )
   xds <- tibble(
     id = rep(1:n, 2),
-    x = c(x),
+    x = c(xx),
     xn = glue('x.{rep(1:2, each = n)}')
   ) %>%
     spread(xn, x)
@@ -80,7 +81,7 @@ simfn <- function(n, p, dim_s, beta_sparse, R = 0.5, rho = 0.4, run = 0, write =
     inner_join(xds)
   
   xf_surr <- xf_surrogate(ds = wds,
-                          x = paste('x.', 1:q, sep =''),
+                          x = paste('x.', 1:2, sep =''),
                           s = paste('s.', 1:dim_s, sep =''),
                           a = 'a',
                           y = 'y',
@@ -106,8 +107,9 @@ simfn <- function(n, p, dim_s, beta_sparse, R = 0.5, rho = 0.4, run = 0, write =
   #                           trim_at = 0.01,
   #                           mthd = 'superlearner',
   #                           splits = 5)
+  # browser()
   xfl_surr <- xf_surrogate(ds = wds,
-                           x = paste('x.', 1:q, sep =''),
+                           x = paste('x.', 1:2, sep =''),
                            s = paste('s.', 1:dim_s, sep =''),
                            a = 'a',
                            y = 'y',
@@ -130,22 +132,17 @@ simfn <- function(n, p, dim_s, beta_sparse, R = 0.5, rho = 0.4, run = 0, write =
   # drr_r_cil <- xfr_surr$R_cil0
   # drr_r_cih <- xfr_surr$R_cih0
   
-  
-  
-  Delta_0 <- mean(y_1) - mean(y_0)
-  R_0 <- 1 - Delta_s/Delta_0
-  
   # browser()
   
   out_ds <- data.frame(
     type = c('true', 'xfdr',  'xfl'),
     # Delta = c(Delta, dr_delta, drl_delta, bama_delta, hima_delta, fb_delta),
-    Delta = c(Delta_0, dr_delta,  drl_delta),
-    Delta_s = c(Delta_s, dr_delta_s,   drl_delta_s),
+    Delta = c(delta_0, dr_delta,  drl_delta),
+    Delta_s = c(delta_s0, dr_delta_s,   drl_delta_s),
     # R = c(R, dr_r, drl_r, bama_r, hima_r)
-    R = c(R_0, dr_r, drl_r),
-    R_cil = c(R, dr_r_cil, drl_r_cil),
-    R_cih = c(R, dr_r_cih, drl_r_cih)
+    R = c(r0, dr_r, drl_r),
+    R_cil = c(r0, dr_r_cil, drl_r_cil),
+    R_cih = c(r0, dr_r_cih, drl_r_cih)
   ) %>% as_tibble
   if (write) {
     write_csv(out_ds, glue('/n/scratch3/users/d/dma12/doubly-robust-surrogate/res-surr_dim{dim_s}-{run}.csv'))
@@ -153,32 +150,26 @@ simfn <- function(n, p, dim_s, beta_sparse, R = 0.5, rho = 0.4, run = 0, write =
   out_ds
 }
 
-sim_params <- expand.grid(n = 500,
-                          p = 50,
-                          R = 0.5,
-                          beta_sparse = c(5, 15, 25, 50),
-                          dim_s = c(1, 10, 50, 75),
-                          run = 1:1000)
-# tst <- sim_params %>% filter(n < 1000) %>% sample_n(1)
+sim_params <- expand.grid(n = c(50, 1000),
+                          dim_s = c(1, 10, 50),
+                          zeta_3 = c(0, 10),
+                          run = 1:3)
+# tst <- sim_params %>% sample_n(1)
 # tst
 # with(tst, simfn(n = n,
-#                 p = p,
-#                 R = R,
-#                 beta_sparse = beta_sparse,
 #                 dim_s = dim_s,
+#                 zeta_3 = zeta_3,
 #                 run = run,
-#                 write = TRUE))
-# # 
-# simfn(n = 500, p = 50, R = 0.9, write = FALSE, run = 850)
+#                 write = FALSE))
 
 
 options(
   clustermq.defaults = list(ptn="short",
                             log_file="Rout/log%a.log",
-                            time_amt = "12:00:00"
+                            time_amt = "1:00:00"
   )
 )
 sim_res <- Q_rows(sim_params, simfn, 
                   fail_on_error = FALSE,
-                  n_jobs = 200)
+                  n_jobs = 4)
 saveRDS(sim_res, here('results/31_surrogate-only-results.rds'))
