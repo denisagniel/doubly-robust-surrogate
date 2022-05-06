@@ -29,7 +29,7 @@ simfn <- function(n, dim_s, zeta_3, run = 0, write = TRUE) {
   a <- rbinom(n, prob = plogis(x), size = 1)
   
   beta_1 <- 2
-  beta_2 <- 0.1
+  beta_2 <- 1
   eps_u <- rnorm(n)
   u <- beta_1*a + beta_2*x*a + eps_u
   u1 <- beta_1 + beta_2*x + eps_u
@@ -44,7 +44,7 @@ simfn <- function(n, dim_s, zeta_3, run = 0, write = TRUE) {
   
   ss <- matrix(c(s, rnorm(n*(dim_s - 1))), n, dim_s)
   
-  zeta_1 <- 0.1
+  zeta_1 <- 1
   zeta_2 <- 1
   eps_z <- rnorm(n)
   y <- pnorm(x^2) + x^2*a + zeta_1*a + zeta_2*u + zeta_3*u*a + eps_z
@@ -150,9 +150,9 @@ simfn <- function(n, dim_s, zeta_3, run = 0, write = TRUE) {
   out_ds
 }
 
-sim_params <- expand.grid(n = c(50, 1000),
+sim_params <- expand.grid(n = c(100, 1000),
                           dim_s = c(1, 10, 50),
-                          zeta_3 = c(0, 10),
+                          zeta_3 = c(1, 10),
                           run = 1:1000)
 # tst <- sim_params %>% sample_n(1)
 # tst
